@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External Data Requirements - FastAPI Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <header class="navbar">
+            <div class="logo-area">
+                <div class="logo-icon">⚡</div>
+                <div>
+                    <h1>TravelOps External Data Simulator</h1>
+                    <p class="subtitle">FastAPI Real-Time Simulator for 10 External APIs</p>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <div class="status-badge" id="server-status">
+                    <span class="status-dot"></span> System Live
+                </div>
+                <button class="btn btn-secondary" id="seed-btn">🔄 Reset & Seed Mock Data</button>
+                <a href="/docs" target="_blank" class="btn btn-primary">📖 Swagger Docs</a>
+            </div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <span class="stat-label">Itineraries</span>
+                <span class="stat-value" id="count-itineraries">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Bookings</span>
+                <span class="stat-value" id="count-bookings">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Flight Statuses</span>
+                <span class="stat-value" id="count-flights">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Train Statuses</span>
+                <span class="stat-value" id="count-trains">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Guide Reports</span>
+                <span class="stat-value" id="count-reports">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">GPS Pings</span>
+                <span class="stat-value" id="count-gps">0</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-layout">
+            <!-- Sidebar Nav -->
+            <nav class="sidebar">
+                <div class="sidebar-title">API Requirements</div>
+                <button class="tab-btn active" data-tab="itinerary">
+                    <span class="tab-icon">📅</span> 1. Itinerary
+                </button>
+                <button class="tab-btn" data-tab="booking">
+                    <span class="tab-icon">🎫</span> 2. Booking Data
+                </button>
+                <button class="tab-btn" data-tab="flight">
+                    <span class="tab-icon">✈️</span> 3. Flight Status
+                </button>
+                <button class="tab-btn" data-tab="train">
+                    <span class="tab-icon">🚆</span> 4. Train Status
+                </button>
+                <button class="tab-btn" data-tab="traffic">
+                    <span class="tab-icon">🚗</span> 5. Traffic & Routes
+                </button>
+                <button class="tab-btn" data-tab="weather">
+                    <span class="tab-icon">🌤️</span> 6. Weather
+                </button>
+                <button class="tab-btn" data-tab="gps">
+                    <span class="tab-icon">📍</span> 7. GPS / Location
+                </button>
+                <button class="tab-btn" data-tab="guide">
+                    <span class="tab-icon">📋</span> 8. Guide Reports
+                </button>
+                <button class="tab-btn" data-tab="location">
+                    <span class="tab-icon">🗺️</span> 9. Location Data
+                </button>
+                <button class="tab-btn" data-tab="historical">
+                    <span class="tab-icon">📊</span> 10. Historical Data
+                </button>
+            </nav>
+
+            <!-- Active API Panel -->
+            <main class="content-panel">
+                <!-- 1. Itinerary Panel -->
+                <section class="tab-content active" id="tab-itinerary">
+                    <div class="panel-header">
+                        <h2>1. Itinerary API</h2>
+                        <span class="endpoint-pill">POST /api/v1/itinerary/import | GET /api/v1/itinerary</span>
+                    </div>
+                    <p class="panel-desc">Manage flights, trains, transfers, hotels, times, and locations. Supports JSON/CSV file uploads or manual form submissions.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>📥 Import Itinerary File (CSV / XLSX / JSON)</h3>
+                            <div class="form-group">
+                                <label>Upload Data File</label>
+                                <input type="file" id="itinerary-file-input" accept=".csv,.xlsx,.xls,.json">
+                            </div>
+                            <button class="btn btn-primary" id="btn-upload-itinerary">Upload & Import</button>
+                            
+                            <hr class="divider">
+
+                            <h3>➕ Manual Entry</h3>
+                            <form id="form-itinerary">
+                                <div class="form-group">
+                                    <label>Trip ID</label>
+                                    <input type="text" id="itin-trip-id" value="TRIP-INDIA-2026" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Item Type</label>
+                                    <select id="itin-type">
+                                        <option value="flight">Flight</option>
+                                        <option value="train">Train</option>
+                                        <option value="transfer">Transfer</option>
+                                        <option value="hotel">Hotel</option>
+                                        <option value="activity" selected>Activity</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Title</label>
+                                    <input type="text" id="itin-title" value="Sunrise Guided Tour of Taj Mahal" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Start Time</label>
+                                        <input type="text" id="itin-start" value="2026-09-12T05:30:00Z">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Origin</label>
+                                        <input type="text" id="itin-origin" value="Agra Cantt Hotel">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-accent">Add Itinerary Item</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <div class="card-header-flex">
+                                <h3>Stored Itineraries</h3>
+                                <button class="btn btn-sm btn-secondary" id="btn-refresh-itineraries">Refresh List</button>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-itineraries">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Trip ID</th>
+                                            <th>Type</th>
+                                            <th>Title</th>
+                                            <th>Supplier</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Booking Data Panel -->
+                <section class="tab-content" id="tab-booking">
+                    <div class="panel-header">
+                        <h2>2. Booking Data Service</h2>
+                        <span class="endpoint-pill">GET /api/v1/booking/{ref} | PATCH /api/v1/booking/{ref}/status</span>
+                    </div>
+                    <p class="panel-desc">Query supplier booking reference details, update status (CONFIRMED, PENDING, CANCELLED), or create new bookings.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>🔍 Look Up or Update Booking</h3>
+                            <div class="form-group">
+                                <label>Booking Reference</label>
+                                <div class="input-with-btn">
+                                    <input type="text" id="booking-ref-input" value="BK-99201">
+                                    <button class="btn btn-primary" id="btn-lookup-booking">Lookup</button>
+                                </div>
+                            </div>
+
+                            <hr class="divider">
+
+                            <h3>✏️ Update Booking Status</h3>
+                            <form id="form-update-booking">
+                                <div class="form-group">
+                                    <label>New Status</label>
+                                    <select id="booking-new-status">
+                                        <option value="CONFIRMED">CONFIRMED</option>
+                                        <option value="MODIFIED">MODIFIED</option>
+                                        <option value="PENDING">PENDING</option>
+                                        <option value="CANCELLED">CANCELLED</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status Notes</label>
+                                    <input type="text" id="booking-notes" value="Passenger requested seat change to aisle">
+                                </div>
+                                <button type="submit" class="btn btn-accent">Update Status</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <h3>Bookings Database</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-bookings">
+                                    <thead>
+                                        <tr>
+                                            <th>Ref</th>
+                                            <th>Supplier</th>
+                                            <th>Passenger</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Flight Status Panel -->
+                <section class="tab-content" id="tab-flight">
+                    <div class="panel-header">
+                        <h2>3. Flight Status API</h2>
+                        <span class="endpoint-pill">GET /api/v1/flight-status</span>
+                    </div>
+                    <p class="panel-desc">Simulate live flight status, gate assignments, delays, and schedule tracking across Indian airports.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>✈️ Query Flight Status</h3>
+                            <form id="form-flight">
+                                <div class="form-group">
+                                    <label>Flight Number</label>
+                                    <input type="text" id="flight-no" value="6E-204" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date</label>
+                                    <input type="date" id="flight-date" value="2026-09-10" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Origin Airport (IATA)</label>
+                                        <input type="text" id="flight-orig" value="DEL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Destination Airport (IATA)</label>
+                                        <input type="text" id="flight-dest" value="BOM">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Check Flight Status</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <h3>Recent Flight Status Records</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-flights">
+                                    <thead>
+                                        <tr>
+                                            <th>Flight</th>
+                                            <th>Date</th>
+                                            <th>Route</th>
+                                            <th>Status</th>
+                                            <th>Gate</th>
+                                            <th>Delay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Train Status Panel -->
+                <section class="tab-content" id="tab-train">
+                    <div class="panel-header">
+                        <h2>4. Train Status API</h2>
+                        <span class="endpoint-pill">GET /api/v1/train-status</span>
+                    </div>
+                    <p class="panel-desc">Query live Indian Railways status, current live station, platform numbers, speed, and delays.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>🚆 Query Rail Status</h3>
+                            <form id="form-train">
+                                <div class="form-group">
+                                    <label>Train Number</label>
+                                    <input type="text" id="train-no" value="22436" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date</label>
+                                    <input type="date" id="train-date" value="2026-09-15" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Origin Station</label>
+                                        <input type="text" id="train-orig" value="New Delhi (NDLS)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Destination Station</label>
+                                        <input type="text" id="train-dest" value="Varanasi Junction (BSB)">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Check Rail Status</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <h3>Rail Status Database</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-trains">
+                                    <thead>
+                                        <tr>
+                                            <th>Train</th>
+                                            <th>Date</th>
+                                            <th>Route</th>
+                                            <th>Status</th>
+                                            <th>Platform</th>
+                                            <th>Current Speed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Traffic & Routes Panel -->
+                <section class="tab-content" id="tab-traffic">
+                    <div class="panel-header">
+                        <h2>5. Traffic & Routes API</h2>
+                        <span class="endpoint-pill">POST /api/v1/traffic-routes/calculate</span>
+                    </div>
+                    <p class="panel-desc">Simulate route computation, distance, congestion index (LOW, MODERATE, HEAVY, SEVERE), travel time, and detour warnings.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>🚗 Calculate Route & Traffic</h3>
+                            <form id="form-traffic">
+                                <div class="form-group">
+                                    <label>Origin</label>
+                                    <input type="text" id="traffic-orig" value="IGI Airport Terminal 3, New Delhi" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Destination</label>
+                                    <input type="text" id="traffic-dest" value="Connaught Place, Central Delhi" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Departure Time</label>
+                                        <input type="text" id="traffic-dep-time" value="09:30 AM">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Travel Mode</label>
+                                        <select id="traffic-mode">
+                                            <option value="driving">Driving</option>
+                                            <option value="transit">Transit</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Calculate Route & Congestion</button>
+                            </form>
+                        </div>
+                        <div class="card" id="traffic-results-card">
+                            <h3>Route Analysis Output</h3>
+                            <p class="placeholder-text">Submit a request on the left to calculate distance and congestion.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. Weather Panel -->
+                <section class="tab-content" id="tab-weather">
+                    <div class="panel-header">
+                        <h2>6. Weather API</h2>
+                        <span class="endpoint-pill">GET /api/v1/weather/current</span>
+                    </div>
+                    <p class="panel-desc">Query live weather conditions, temperatures, humidity, wind speeds, and severe weather warnings for any destination.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>🌤️ Get Weather Conditions</h3>
+                            <form id="form-weather">
+                                <div class="form-group">
+                                    <label>Location</label>
+                                    <input type="text" id="weather-location" value="New Delhi, India" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date / Time (Optional)</label>
+                                    <input type="text" id="weather-datetime" placeholder="Leave empty for current timestamp">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Get Weather Data</button>
+                            </form>
+                        </div>
+                        <div class="card" id="weather-results-card">
+                            <h3>Weather Report Card</h3>
+                            <p class="placeholder-text">Enter a location to fetch weather telemetry.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. GPS / Location Panel -->
+                <section class="tab-content" id="tab-gps">
+                    <div class="panel-header">
+                        <h2>7. GPS / Location Telemetry API</h2>
+                        <span class="endpoint-pill">POST /api/v1/gps/ping | GET /api/v1/gps/{device}/history</span>
+                    </div>
+                    <p class="panel-desc">Receive real-time mobile GPS tracking pings and query breadcrumb trail history for tour vehicles & guides.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>📍 Broadcast GPS Ping</h3>
+                            <form id="form-gps-ping">
+                                <div class="form-group">
+                                    <label>Device ID</label>
+                                    <input type="text" id="gps-device-id" value="DEV-TOUR-101" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Latitude</label>
+                                        <input type="number" step="0.0001" id="gps-lat" value="28.6129" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Longitude</label>
+                                        <input type="number" step="0.0001" id="gps-lng" value="77.2295" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Speed (km/h)</label>
+                                        <input type="number" step="0.1" id="gps-speed" value="35.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Heading (°)</label>
+                                        <input type="number" step="0.1" id="gps-heading" value="180">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-accent">Send GPS Ping</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <div class="card-header-flex">
+                                <h3>Device Location History</h3>
+                                <button class="btn btn-sm btn-secondary" id="btn-fetch-gps">Fetch History</button>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-gps">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Latitude</th>
+                                            <th>Longitude</th>
+                                            <th>Speed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 8. Guide Reports Panel -->
+                <section class="tab-content" id="tab-guide">
+                    <div class="panel-header">
+                        <h2>8. Guide Reports API</h2>
+                        <span class="endpoint-pill">POST /api/v1/guide-reports | GET /api/v1/guide-reports</span>
+                    </div>
+                    <p class="panel-desc">Ingest and view field reports submitted by tour guides regarding local disruptions, road issues, or emergency delays.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>📋 Submit Guide Field Report</h3>
+                            <form id="form-guide">
+                                <div class="form-group">
+                                    <label>Guide ID</label>
+                                    <input type="text" id="guide-id" value="GUIDE-RAJESH" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Location</label>
+                                    <input type="text" id="guide-location" value="Taj Mahal East Gate, Agra" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Report Type</label>
+                                        <select id="guide-type">
+                                            <option value="road_issue">Road Issue / Traffic</option>
+                                            <option value="delay">Delay</option>
+                                            <option value="local_disruption" selected>Local Disruption</option>
+                                            <option value="weather_hazard">Weather Hazard</option>
+                                            <option value="general_message">General Message</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Severity</label>
+                                        <select id="guide-severity">
+                                            <option value="LOW">LOW</option>
+                                            <option value="MEDIUM" selected>MEDIUM</option>
+                                            <option value="HIGH">HIGH</option>
+                                            <option value="CRITICAL">CRITICAL</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Message / Details</label>
+                                    <textarea id="guide-message" rows="3" required>Heavy tourist queue at East Gate ticketing counter; rerouting tour group to West Gate entry point for expedited security clearance.</textarea>
+                                </div>
+                                <button type="submit" class="btn btn-accent">Submit Report</button>
+                            </form>
+                        </div>
+                        <div class="card">
+                            <h3>Active Guide Field Incidents</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="table-guide-reports">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Guide</th>
+                                            <th>Location</th>
+                                            <th>Type</th>
+                                            <th>Severity</th>
+                                            <th>Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 9. Location Data Panel -->
+                <section class="tab-content" id="tab-location">
+                    <div class="panel-header">
+                        <h2>9. Location Data API (Geocoding & Maps)</h2>
+                        <span class="endpoint-pill">GET /api/v1/location/geocode | GET /api/v1/location/reverse-geocode</span>
+                    </div>
+                    <p class="panel-desc">Geocode text addresses to precise coordinates or reverse-geocode coordinates to street address and points of interest.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>🗺️ Geocode Search</h3>
+                            <form id="form-geocode">
+                                <div class="form-group">
+                                    <label>Address or Landmark Name</label>
+                                    <div class="input-with-btn">
+                                        <input type="text" id="geocode-query" value="Taj Mahal Agra" required>
+                                        <button type="submit" class="btn btn-primary">Geocode</button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <hr class="divider">
+
+                            <h3>📍 Reverse Geocode Search</h3>
+                            <form id="form-reverse-geocode">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Latitude</label>
+                                        <input type="number" step="0.0001" id="rev-lat" value="28.6129" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Longitude</label>
+                                        <input type="number" step="0.0001" id="rev-lng" value="77.2295" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Reverse Geocode</button>
+                            </form>
+                        </div>
+                        <div class="card" id="location-results-card">
+                            <h3>Map / Geocode Metadata</h3>
+                            <p class="placeholder-text">Perform a search on the left to see place coordinates and POIs.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 10. Historical Data Panel -->
+                <section class="tab-content" id="tab-historical">
+                    <div class="panel-header">
+                        <h2>10. Historical Data API</h2>
+                        <span class="endpoint-pill">GET /api/v1/historical/weather | GET /api/v1/historical/travel-data</span>
+                    </div>
+                    <p class="panel-desc">Query historical weather patterns, past rainfall, and historical traffic delay risk models for itinerary planning.</p>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>📊 Query Historical Travel Trends</h3>
+                            <form id="form-historical">
+                                <div class="form-group">
+                                    <label>Location / City</label>
+                                    <input type="text" id="hist-location" value="New Delhi" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Date From</label>
+                                        <input type="date" id="hist-from" value="2025-09-01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Date To</label>
+                                        <input type="date" id="hist-to" value="2025-09-30">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Query Historical Trends</button>
+                            </form>
+                        </div>
+                        <div class="card" id="historical-results-card">
+                            <h3>Historical Data Summary</h3>
+                            <p class="placeholder-text">Query historical metrics on the left.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Live Response Inspector Footer -->
+                <div class="response-inspector card">
+                    <div class="inspector-header">
+                        <h3>Console Response Inspector</h3>
+                        <div class="response-meta">
+                            <span class="status-code-pill pill-success" id="resp-status-code">HTTP 200 OK</span>
+                            <span class="response-time" id="resp-time">0 ms</span>
+                        </div>
+                    </div>
+                    <pre class="json-code" id="response-json-viewer">// Make an API request above to inspect the JSON response...</pre>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
