@@ -1,8 +1,23 @@
 from django.contrib.auth.models import Group, User
 from rest_framework import permissions, viewsets, generics
 
-from app.serializers import GroupSerializer, UserSerializer, TripSerializer
-from .models import Trip
+from .models import (
+    Trip,
+    Location,
+    ItineraryElement,
+    Booking,
+    Dependency,
+)
+
+from .serializers import (
+    UserSerializer,
+    GroupSerializer,
+    TripSerializer,
+    LocationSerializer,
+    ItineraryElementSerializer,
+    BookingSerializer,
+    DependencySerializer,
+)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -26,12 +41,50 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
 class TripListCreateView(generics.ListCreateAPIView):
-
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
 
 
 class TripUpdateView(generics.UpdateAPIView):
-
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
+
+
+class LocationListCreateView(generics.ListCreateAPIView):
+    queryset = Location.objects.all()
+    serializer_class = LocationSerializer
+
+
+class LocationUpdateView(generics.UpdateAPIView):
+    queryset = Location.objects.all()
+    serializer_class = LocationSerializer
+
+
+class ItineraryElementListCreateView(generics.ListCreateAPIView):
+    queryset = ItineraryElement.objects.all()
+    serializer_class = ItineraryElementSerializer
+
+
+class ItineraryElementUpdateView(generics.UpdateAPIView):
+    queryset = ItineraryElement.objects.all()
+    serializer_class = ItineraryElementSerializer
+
+
+class BookingListCreateView(generics.ListCreateAPIView):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
+
+
+class BookingUpdateView(generics.UpdateAPIView):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
+
+
+class DependencyListCreateView(generics.ListCreateAPIView):
+    queryset = Dependency.objects.all()
+    serializer_class = DependencySerializer
+
+
+class DependencyUpdateView(generics.UpdateAPIView):
+    queryset = Dependency.objects.all()
+    serializer_class = DependencySerializer
