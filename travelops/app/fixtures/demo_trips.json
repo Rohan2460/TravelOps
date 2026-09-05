@@ -1,0 +1,973 @@
+[
+  {
+    "model": "app.location",
+    "pk": 100,
+    "fields": {
+      "name": "Trivandrum Intl Airport (TRV)",
+      "latitude": 8.4822,
+      "longitude": 76.9201,
+      "address": "Chacka, Thiruvananthapuram, Kerala 695009"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 101,
+    "fields": {
+      "name": "Kovalam Beach Resort",
+      "latitude": 8.4004,
+      "longitude": 76.9786,
+      "address": "Lighthouse Beach, Kovalam, Kerala 695527"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 102,
+    "fields": {
+      "name": "Kochi Intl Airport (COK)",
+      "latitude": 10.152,
+      "longitude": 76.4019,
+      "address": "Nedumbassery, Kochi, Kerala 683111"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 103,
+    "fields": {
+      "name": "Kollam Railway Station",
+      "latitude": 8.8811,
+      "longitude": 76.5991,
+      "address": "Chinnakada, Kollam, Kerala 691001"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 104,
+    "fields": {
+      "name": "Alleppey Backwaters Jetty",
+      "latitude": 9.4981,
+      "longitude": 76.3388,
+      "address": "Finishing Point, Alappuzha, Kerala 688013"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 105,
+    "fields": {
+      "name": "New Delhi Intl Airport (DEL)",
+      "latitude": 28.5562,
+      "longitude": 77.1,
+      "address": "IGI Airport, New Delhi 110037"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 106,
+    "fields": {
+      "name": "Dharamshala Bus Stand",
+      "latitude": 32.2189,
+      "longitude": 76.3196,
+      "address": "Dharamshala, Himachal Pradesh 176215"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 107,
+    "fields": {
+      "name": "McLeod Ganj",
+      "latitude": 32.2394,
+      "longitude": 76.3242,
+      "address": "McLeod Ganj, Dharamshala, Himachal Pradesh 176219"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 108,
+    "fields": {
+      "name": "Triund",
+      "latitude": 32.2519,
+      "longitude": 76.2953,
+      "address": "Triund, Dharamshala, Himachal Pradesh 176219"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 109,
+    "fields": {
+      "name": "Santorini Intl Airport (JTR)",
+      "latitude": 36.3997,
+      "longitude": 25.4793,
+      "address": "Kamari, Santorini, Greece 84700"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 110,
+    "fields": {
+      "name": "Oia Village",
+      "latitude": 36.4618,
+      "longitude": 25.3753,
+      "address": "Oia, Santorini, Greece 84702"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 111,
+    "fields": {
+      "name": "Fira Port",
+      "latitude": 36.4185,
+      "longitude": 25.4319,
+      "address": "Fira, Santorini, Greece 84700"
+    }
+  },
+  {
+    "model": "app.location",
+    "pk": 112,
+    "fields": {
+      "name": "Athens Intl Airport (ATH)",
+      "latitude": 37.9364,
+      "longitude": 23.9445,
+      "address": "Spata, Athens, Greece 19004"
+    }
+  },
+
+  {
+    "model": "app.trip",
+    "pk": 100,
+    "fields": {
+      "guide_id": 101,
+      "name": "Kerala Monsoon Escape",
+      "start_time": "2026-09-04T00:15:00Z",
+      "end_time": "2026-09-07T18:00:00Z",
+      "status": "active"
+    }
+  },
+
+  {
+    "model": "app.itineraryelement",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "type": "flight",
+      "name": "Flight AI-1049 Delhi to Trivandrum",
+      "start_location": 105,
+      "end_location": 100,
+      "planned_start": "2026-09-04T00:30:00Z",
+      "planned_end": "2026-09-04T04:00:00Z",
+      "actual_start": "2026-09-04T02:35:00Z",
+      "actual_end": "2026-09-04T06:05:00Z",
+      "status": "disrupted",
+      "sequence": 1
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 101,
+    "fields": {
+      "trip": 100,
+      "type": "road_transfer",
+      "name": "Transfer Trivandrum Airport to Kovalam",
+      "start_location": 100,
+      "end_location": 101,
+      "planned_start": "2026-09-04T04:15:00Z",
+      "planned_end": "2026-09-04T05:15:00Z",
+      "status": "at_risk",
+      "sequence": 2
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 102,
+    "fields": {
+      "trip": 100,
+      "type": "hotel",
+      "name": "Kovalam Beach Resort",
+      "start_location": 101,
+      "end_location": 101,
+      "planned_start": "2026-09-04T06:30:00Z",
+      "planned_end": "2026-09-06T05:30:00Z",
+      "status": "valid",
+      "sequence": 3
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 103,
+    "fields": {
+      "trip": 100,
+      "type": "road_transfer",
+      "name": "Transfer Kovalam to Alleppey",
+      "start_location": 101,
+      "end_location": 104,
+      "planned_start": "2026-09-06T03:30:00Z",
+      "planned_end": "2026-09-06T06:00:00Z",
+      "status": "valid",
+      "sequence": 4
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 104,
+    "fields": {
+      "trip": 100,
+      "type": "activity",
+      "name": "Alleppey Backwater Cruise",
+      "start_location": 104,
+      "end_location": 104,
+      "planned_start": "2026-09-06T06:30:00Z",
+      "planned_end": "2026-09-06T10:30:00Z",
+      "status": "at_risk",
+      "sequence": 5
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 105,
+    "fields": {
+      "trip": 100,
+      "type": "train",
+      "name": "Train Alleppey to Trivandrum",
+      "start_location": 104,
+      "end_location": 103,
+      "planned_start": "2026-09-06T11:30:00Z",
+      "planned_end": "2026-09-06T13:30:00Z",
+      "status": "valid",
+      "sequence": 6
+    }
+  },
+
+  {
+    "model": "app.booking",
+    "pk": 100,
+    "fields": {
+      "itinerary_element": 100,
+      "supplier_name": "Air India",
+      "booking_reference": "AI-DEL-TRV-4412",
+      "status": "confirmed",
+      "notes": "Delayed due to technical snag; see case 100",
+      "created_at": "2026-08-10T09:00:00Z",
+      "updated_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 101,
+    "fields": {
+      "itinerary_element": 101,
+      "supplier_name": "Kerala Cabs",
+      "booking_reference": "TRV-KOV-8891",
+      "status": "confirmed",
+      "notes": "Driver agreed to hold until flight arrival",
+      "created_at": "2026-08-10T09:15:00Z",
+      "updated_at": "2026-09-04T03:45:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 102,
+    "fields": {
+      "itinerary_element": 102,
+      "supplier_name": "Kovalam Beach Resort",
+      "booking_reference": "KOV-1155",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-08-10T09:30:00Z",
+      "updated_at": "2026-08-10T09:30:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 103,
+    "fields": {
+      "itinerary_element": 104,
+      "supplier_name": "Alleppey Backwater Cruises",
+      "booking_reference": "ABC-2203",
+      "status": "confirmed",
+      "notes": "Rain may force cancellation",
+      "created_at": "2026-08-10T09:45:00Z",
+      "updated_at": "2026-09-04T03:00:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 104,
+    "fields": {
+      "itinerary_element": 105,
+      "supplier_name": "Indian Railways",
+      "booking_reference": "IR-ALP-TRV-7731",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-08-10T10:00:00Z",
+      "updated_at": "2026-08-10T10:00:00Z"
+    }
+  },
+
+  {
+    "model": "app.dependency",
+    "pk": 100,
+    "fields": {
+      "from_element": 100,
+      "to_element": 101,
+      "type": "transfer",
+      "minimum_buffer": "PT1H30M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 101,
+    "fields": {
+      "from_element": 101,
+      "to_element": 102,
+      "type": "arrival",
+      "minimum_buffer": "PT30M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 102,
+    "fields": {
+      "from_element": 102,
+      "to_element": 103,
+      "type": "departure",
+      "minimum_buffer": "PT2H"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 103,
+    "fields": {
+      "from_element": 103,
+      "to_element": 104,
+      "type": "transfer",
+      "minimum_buffer": "PT45M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 104,
+    "fields": {
+      "from_element": 104,
+      "to_element": 105,
+      "type": "transfer",
+      "minimum_buffer": "PT1H"
+    }
+  },
+
+  {
+    "model": "app.event",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "type": "flight_delay",
+      "source": "flight_status",
+      "title": "AI-1049 from Delhi delayed 2 hours",
+      "description": "Technical snag reported before pushback; maintenance resolved but departure slipped to 08:05 IST.",
+      "location": 105,
+      "occurred_at": "2026-09-04T01:15:00Z",
+      "reported_at": "2026-09-04T01:20:00Z",
+      "severity": "high",
+      "status": "open",
+      "created_by": 101
+    }
+  },
+  {
+    "model": "app.event",
+    "pk": 101,
+    "fields": {
+      "trip": 100,
+      "type": "weather_warning",
+      "source": "weather",
+      "title": "Heavy rain warning in Trivandrum region",
+      "description": "IMD orange alert; heavy rainfall expected to continue through the island and backwater regions.",
+      "location": 100,
+      "occurred_at": "2026-09-04T02:00:00Z",
+      "reported_at": "2026-09-04T02:05:00Z",
+      "severity": "medium",
+      "status": "monitored",
+      "created_by": 101
+    }
+  },
+
+  {
+    "model": "app.impact",
+    "pk": 100,
+    "fields": {
+      "event": 100,
+      "itinerary_element": 100,
+      "classification": "direct",
+      "status": "disrupted",
+      "severity": "high",
+      "reason": "Flight AI-1049 departed 2h05m late after technical snag",
+      "calculated_at": "2026-09-04T02:30:00Z"
+    }
+  },
+  {
+    "model": "app.impact",
+    "pk": 101,
+    "fields": {
+      "event": 100,
+      "itinerary_element": 101,
+      "classification": "downstream",
+      "status": "at_risk",
+      "severity": "high",
+      "reason": "Transfer may not meet original arrival; driver holding until 07:00 IST",
+      "calculated_at": "2026-09-04T02:45:00Z"
+    }
+  },
+  {
+    "model": "app.impact",
+    "pk": 102,
+    "fields": {
+      "event": 100,
+      "itinerary_element": 102,
+      "classification": "downstream",
+      "status": "valid",
+      "severity": "low",
+      "reason": "Late night arrival possible; hotel notified",
+      "calculated_at": "2026-09-04T02:45:00Z"
+    }
+  },
+  {
+    "model": "app.impact",
+    "pk": 103,
+    "fields": {
+      "event": 101,
+      "itinerary_element": 104,
+      "classification": "direct",
+      "status": "at_risk",
+      "severity": "medium",
+      "reason": "Heavy rain may force backwater cruise cancellation",
+      "calculated_at": "2026-09-04T02:55:00Z"
+    }
+  },
+
+  {
+    "model": "app.case",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "primary_event": 100,
+      "title": "AI-1049 delay risks Kovalam transfer and Alleppey cruise",
+      "priority": "high",
+      "status": "open",
+      "created_at": "2026-09-04T02:35:00Z",
+      "updated_at": "2026-09-04T03:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 5
+    }
+  },
+
+  {
+    "model": "app.caseimpact",
+    "pk": 100,
+    "fields": {
+      "case": 100,
+      "impact": 100
+    }
+  },
+  {
+    "model": "app.caseimpact",
+    "pk": 101,
+    "fields": {
+      "case": 100,
+      "impact": 101
+    }
+  },
+
+  {
+    "model": "app.caseaction",
+    "pk": 100,
+    "fields": {
+      "case": 100,
+      "type": "contact_supplier",
+      "description": "Spoke with Air India; standby seats confirmed on later departure options",
+      "status": "completed",
+      "created_by": 101,
+      "created_at": "2026-09-04T02:40:00Z",
+      "completed_at": "2026-09-04T03:00:00Z"
+    }
+  },
+  {
+    "model": "app.caseaction",
+    "pk": 101,
+    "fields": {
+      "case": 100,
+      "type": "monitor",
+      "description": "Hold road transfer for arrival; rebook cruise if rain persists",
+      "status": "pending",
+      "created_by": 101,
+      "created_at": "2026-09-04T02:40:00Z",
+      "completed_at": null
+    }
+  },
+
+  {
+    "model": "app.itinerarychange",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 101,
+      "change_type": "update",
+      "old_value": "2026-09-04T04:15:00Z",
+      "new_value": "2026-09-04T05:30:00Z",
+      "reason": "Delayed flight AI-1049; driver agreed to hold",
+      "event": 100,
+      "changed_by": 101,
+      "changed_at": "2026-09-04T03:20:00Z"
+    }
+  },
+
+  {
+    "model": "app.readinessassessment",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "status": "attention",
+      "reason": "All bookings present; tight 20-minute connection risk noted",
+      "calculated_at": "2026-09-03T12:00:00Z"
+    }
+  },
+
+  {
+    "model": "app.triprisk",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "type": "connection",
+      "severity": "medium",
+      "reason": "20-minute buffer between flight arrival and transfer departure",
+      "status": "open",
+      "created_at": "2026-09-03T12:05:00Z",
+      "updated_at": "2026-09-04T02:45:00Z"
+    }
+  },
+  {
+    "model": "app.triprisk",
+    "pk": 101,
+    "fields": {
+      "trip": 100,
+      "type": "weather",
+      "severity": "high",
+      "reason": "Monsoon heavy-rain warning may affect backwater cruise",
+      "status": "open",
+      "created_at": "2026-09-04T02:10:00Z",
+      "updated_at": "2026-09-04T02:10:00Z"
+    }
+  },
+  {
+    "model": "app.auditlog",
+    "pk": 100,
+    "fields": {
+      "user_id": 101,
+      "entity_type": "trip",
+      "entity_id": 100,
+      "action": "create",
+      "details": {"source": "demo_fixture"},
+      "created_at": "2026-08-10T08:00:00Z"
+    }
+  },
+  {
+    "model": "app.auditlog",
+    "pk": 101,
+    "fields": {
+      "user_id": 5,
+      "entity_type": "case",
+      "entity_id": 100,
+      "action": "update",
+      "details": {"field": "status", "from": "new", "to": "open"},
+      "created_at": "2026-09-04T02:35:00Z"
+    }
+  },
+
+  {
+    "model": "app.trip",
+    "pk": 200,
+    "fields": {
+      "guide_id": 102,
+      "name": "Himalayan Yatra",
+      "start_time": "2026-09-20T00:00:00Z",
+      "end_time": "2026-09-27T23:00:00Z",
+      "status": "upcoming"
+    }
+  },
+
+  {
+    "model": "app.itineraryelement",
+    "pk": 200,
+    "fields": {
+      "trip": 200,
+      "type": "flight",
+      "name": "Flight AI-4402 Delhi to Dharamshala",
+      "start_location": 105,
+      "end_location": 106,
+      "planned_start": "2026-09-20T02:30:00Z",
+      "planned_end": "2026-09-20T04:20:00Z",
+      "status": "valid",
+      "sequence": 1
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 201,
+    "fields": {
+      "trip": 200,
+      "type": "road_transfer",
+      "name": "Transfer Dharamshala to McLeod Ganj",
+      "start_location": 106,
+      "end_location": 107,
+      "planned_start": "2026-09-20T05:00:00Z",
+      "planned_end": "2026-09-20T06:00:00Z",
+      "status": "valid",
+      "sequence": 2
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 202,
+    "fields": {
+      "trip": 200,
+      "type": "hotel",
+      "name": "McLeod Inn",
+      "start_location": 107,
+      "end_location": 107,
+      "planned_start": "2026-09-20T07:00:00Z",
+      "planned_end": "2026-09-25T06:00:00Z",
+      "status": "valid",
+      "sequence": 3
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 203,
+    "fields": {
+      "trip": 200,
+      "type": "activity",
+      "name": "Triund Trek",
+      "start_location": 107,
+      "end_location": 108,
+      "planned_start": "2026-09-24T00:00:00Z",
+      "planned_end": "2026-09-24T12:00:00Z",
+      "status": "valid",
+      "sequence": 4
+    }
+  },
+
+  {
+    "model": "app.booking",
+    "pk": 200,
+    "fields": {
+      "itinerary_element": 200,
+      "supplier_name": "Air India",
+      "booking_reference": "AI-DHM-5588",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-08-25T09:00:00Z",
+      "updated_at": "2026-08-25T09:00:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 201,
+    "fields": {
+      "itinerary_element": 201,
+      "supplier_name": "Himalayan Cabs",
+      "booking_reference": "DHM-MCD-1122",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-08-25T09:15:00Z",
+      "updated_at": "2026-08-25T09:15:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 202,
+    "fields": {
+      "itinerary_element": 202,
+      "supplier_name": "McLeod Inn",
+      "booking_reference": "MCD-4407",
+      "status": "pending",
+      "notes": "Second night confirmation pending",
+      "created_at": "2026-08-25T09:30:00Z",
+      "updated_at": "2026-09-05T08:30:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 203,
+    "fields": {
+      "itinerary_element": 203,
+      "supplier_name": "Sherpa Trek Co",
+      "booking_reference": "TRD-2201",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-08-25T09:45:00Z",
+      "updated_at": "2026-08-25T09:45:00Z"
+    }
+  },
+
+  {
+    "model": "app.dependency",
+    "pk": 200,
+    "fields": {
+      "from_element": 200,
+      "to_element": 201,
+      "type": "transfer",
+      "minimum_buffer": "PT1H"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 201,
+    "fields": {
+      "from_element": 201,
+      "to_element": 202,
+      "type": "arrival",
+      "minimum_buffer": "PT30M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 202,
+    "fields": {
+      "from_element": 202,
+      "to_element": 203,
+      "type": "day",
+      "minimum_buffer": "P1D"
+    }
+  },
+
+  {
+    "model": "app.readinessassessment",
+    "pk": 200,
+    "fields": {
+      "trip": 200,
+      "status": "incomplete",
+      "reason": "Hotel second night unconfirmed; trek permits not uploaded",
+      "calculated_at": "2026-09-05T08:00:00Z"
+    }
+  },
+
+  {
+    "model": "app.triprisk",
+    "pk": 200,
+    "fields": {
+      "trip": 200,
+      "type": "weather",
+      "severity": "high",
+      "reason": "Possible heavy snowfall ahead of trek window",
+      "status": "open",
+      "created_at": "2026-09-05T08:10:00Z",
+      "updated_at": "2026-09-05T08:10:00Z"
+    }
+  },
+  {
+    "model": "app.triprisk",
+    "pk": 201,
+    "fields": {
+      "trip": 200,
+      "type": "readiness",
+      "severity": "medium",
+      "reason": "Missing hotel confirmation beyond first night",
+      "status": "open",
+      "created_at": "2026-09-05T08:10:00Z",
+      "updated_at": "2026-09-05T08:10:00Z"
+    }
+  },
+  {
+    "model": "app.auditlog",
+    "pk": 200,
+    "fields": {
+      "user_id": 102,
+      "entity_type": "trip",
+      "entity_id": 200,
+      "action": "create",
+      "details": {"source": "demo_fixture"},
+      "created_at": "2026-09-05T08:00:00Z"
+    }
+  },
+
+  {
+    "model": "app.trip",
+    "pk": 300,
+    "fields": {
+      "guide_id": 103,
+      "name": "Santorini Sunset",
+      "start_time": "2026-07-01T00:00:00Z",
+      "end_time": "2026-07-08T23:00:00Z",
+      "status": "completed"
+    }
+  },
+
+  {
+    "model": "app.itineraryelement",
+    "pk": 300,
+    "fields": {
+      "trip": 300,
+      "type": "flight",
+      "name": "Flight ATH to Santorini",
+      "start_location": 112,
+      "end_location": 109,
+      "planned_start": "2026-07-01T05:00:00Z",
+      "planned_end": "2026-07-01T06:10:00Z",
+      "actual_start": "2026-07-01T05:05:00Z",
+      "actual_end": "2026-07-01T06:15:00Z",
+      "status": "completed",
+      "sequence": 1
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 301,
+    "fields": {
+      "trip": 300,
+      "type": "road_transfer",
+      "name": "Transfer Santorini Airport to Oia",
+      "start_location": 109,
+      "end_location": 110,
+      "planned_start": "2026-07-01T06:30:00Z",
+      "planned_end": "2026-07-01T07:15:00Z",
+      "actual_start": "2026-07-01T06:40:00Z",
+      "actual_end": "2026-07-01T07:20:00Z",
+      "status": "completed",
+      "sequence": 2
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 302,
+    "fields": {
+      "trip": 300,
+      "type": "hotel",
+      "name": "Oia Village Hotel",
+      "start_location": 110,
+      "end_location": 110,
+      "planned_start": "2026-07-01T08:00:00Z",
+      "planned_end": "2026-07-07T07:00:00Z",
+      "status": "completed",
+      "sequence": 3
+    }
+  },
+  {
+    "model": "app.itineraryelement",
+    "pk": 303,
+    "fields": {
+      "trip": 300,
+      "type": "ferry",
+      "name": "Ferry Santorini to Athens",
+      "start_location": 111,
+      "end_location": 112,
+      "planned_start": "2026-07-07T09:00:00Z",
+      "planned_end": "2026-07-07T13:00:00Z",
+      "actual_start": "2026-07-07T09:00:00Z",
+      "actual_end": "2026-07-07T13:15:00Z",
+      "status": "completed",
+      "sequence": 4
+    }
+  },
+
+  {
+    "model": "app.booking",
+    "pk": 300,
+    "fields": {
+      "itinerary_element": 300,
+      "supplier_name": "Aegean Airlines",
+      "booking_reference": "A3-A1S-9901",
+      "status": "confirmed",
+      "notes": "On-time departure",
+      "created_at": "2026-05-20T10:00:00Z",
+      "updated_at": "2026-07-01T06:20:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 301,
+    "fields": {
+      "itinerary_element": 301,
+      "supplier_name": "Santorini Transfers",
+      "booking_reference": "STR-JTR-OIA-33",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-05-20T10:15:00Z",
+      "updated_at": "2026-05-20T10:15:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 302,
+    "fields": {
+      "itinerary_element": 302,
+      "supplier_name": "Oia Village Hotel",
+      "booking_reference": "OIA-7788",
+      "status": "confirmed",
+      "notes": "Sea-view suite",
+      "created_at": "2026-05-20T10:30:00Z",
+      "updated_at": "2026-05-20T10:30:00Z"
+    }
+  },
+  {
+    "model": "app.booking",
+    "pk": 303,
+    "fields": {
+      "itinerary_element": 303,
+      "supplier_name": "Blue Star Ferries",
+      "booking_reference": "BSF-SAN-ATH-114",
+      "status": "confirmed",
+      "notes": "",
+      "created_at": "2026-05-20T10:45:00Z",
+      "updated_at": "2026-05-20T10:45:00Z"
+    }
+  },
+
+  {
+    "model": "app.dependency",
+    "pk": 300,
+    "fields": {
+      "from_element": 300,
+      "to_element": 301,
+      "type": "transfer",
+      "minimum_buffer": "PT45M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 301,
+    "fields": {
+      "from_element": 301,
+      "to_element": 302,
+      "type": "arrival",
+      "minimum_buffer": "PT30M"
+    }
+  },
+  {
+    "model": "app.dependency",
+    "pk": 302,
+    "fields": {
+      "from_element": 302,
+      "to_element": 303,
+      "type": "day",
+      "minimum_buffer": "P1D"
+    }
+  },
+
+  {
+    "model": "app.readinessassessment",
+    "pk": 300,
+    "fields": {
+      "trip": 300,
+      "status": "ready",
+      "reason": "All bookings confirmed; buffers adequate",
+      "calculated_at": "2026-06-30T10:00:00Z"
+    }
+  },
+  {
+    "model": "app.auditlog",
+    "pk": 300,
+    "fields": {
+      "user_id": 103,
+      "entity_type": "trip",
+      "entity_id": 300,
+      "action": "complete",
+      "details": {"outcome": "on_time"},
+      "created_at": "2026-07-08T00:00:00Z"
+    }
+  }
+]
