@@ -6,6 +6,7 @@
 - `travelops/travelops/` contains project settings, URL configuration, and ASGI/WSGI entry points.
 - `travelops/app/` is the custom application where domain models, DRF serializers, API views/viewsets, URLs, admin configuration, migrations, and tests belong.
 - [README.md](README.md) defines the product scope and MVP boundaries; use it for domain decisions instead of duplicating those requirements here.
+- [API.md](API.md) documents the current models, serializers, endpoints, and trip-analysis rules.
 
 ## Development commands
 
