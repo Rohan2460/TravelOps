@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:5173/api', // Your Django DRF base URL
+    baseURL: '/api', // proxied to Django (see vite.config.js -> server.proxy)
     headers: {
         'Content-Type': 'application/json',
     },
