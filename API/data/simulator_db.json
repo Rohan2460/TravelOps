@@ -1,0 +1,623 @@
+{
+  "itineraries": [
+    {
+      "itinerary_id": "ITIN-1001",
+      "trip_id": "TRIP-INDIA-2026",
+      "item_type": "flight",
+      "title": "IndiGo Flight 6E-204 from Delhi (DEL) to Mumbai (BOM)",
+      "start_time": "2026-09-10T06:15:00Z",
+      "end_time": "2026-09-10T08:30:00Z",
+      "origin_location": "Indira Gandhi Intl Airport T3 (DEL)",
+      "destination_location": "Chhatrapati Shivaji Maharaj Intl T2 (BOM)",
+      "supplier": "IndiGo Airlines",
+      "reference_code": "BK-99201",
+      "status": "CONFIRMED",
+      "notes": "Boarding Gate 42, Terminal 3"
+    },
+    {
+      "itinerary_id": "ITIN-1002",
+      "trip_id": "TRIP-INDIA-2026",
+      "item_type": "hotel",
+      "title": "Stay at The Taj Mahal Palace, Colaba Mumbai",
+      "start_time": "2026-09-10T14:00:00Z",
+      "end_time": "2026-09-13T11:00:00Z",
+      "origin_location": "Mumbai",
+      "destination_location": "Apollo Bandar, Colaba, Mumbai, Maharashtra 400001",
+      "supplier": "The Taj Mahal Palace",
+      "reference_code": "BK-44102",
+      "status": "CONFIRMED",
+      "notes": "Heritage Wing Luxury Sea View Room"
+    },
+    {
+      "itinerary_id": "ITIN-1003",
+      "trip_id": "TRIP-INDIA-2026",
+      "item_type": "train",
+      "title": "Vande Bharat Express (22436) from New Delhi to Varanasi",
+      "start_time": "2026-09-14T06:00:00Z",
+      "end_time": "2026-09-14T14:00:00Z",
+      "origin_location": "New Delhi Railway Station (NDLS)",
+      "destination_location": "Varanasi Junction (BSB)",
+      "supplier": "Indian Railways (IRCTC)",
+      "reference_code": "BK-77810",
+      "status": "CONFIRMED",
+      "notes": "Executive Chair Car (EC), Coach E1"
+    },
+    {
+      "itinerary_id": "ITIN-1004",
+      "trip_id": "TRIP-INDIA-2026",
+      "item_type": "transfer",
+      "title": "Private AC Cab Transfer to Taj Mahal & Agra Fort",
+      "start_time": "2026-09-15T09:00:00Z",
+      "end_time": "2026-09-15T17:30:00Z",
+      "origin_location": "Agra Cantt Railway Station",
+      "destination_location": "Taj Mahal East Gate, Agra, Uttar Pradesh",
+      "supplier": "Incredible India Tourist Transfers",
+      "reference_code": "BK-55219",
+      "status": "CONFIRMED",
+      "notes": "Dedicated chauffeur with pre-paid toll permits"
+    },
+    {
+      "itinerary_id": "ITIN-1005",
+      "trip_id": "TRIP-INDIA-2026",
+      "item_type": "flight",
+      "title": "Air India AI-102 from Mumbai (BOM) to New Delhi (DEL)",
+      "start_time": "2026-09-16T19:00:00Z",
+      "end_time": "2026-09-16T21:15:00Z",
+      "origin_location": "Chhatrapati Shivaji Maharaj Intl T2 (BOM)",
+      "destination_location": "Indira Gandhi Intl Airport T3 (DEL)",
+      "supplier": "Air India",
+      "reference_code": "BK-99305",
+      "status": "CONFIRMED",
+      "notes": "Terminal 2 departure, Gate 54"
+    },
+    {
+      "itinerary_id": "ITIN-B2835C",
+      "trip_id": "TEST-TRIP",
+      "item_type": "flight",
+      "title": "Test Flight Item",
+      "start_time": "2026-09-10T12:00:00Z",
+      "end_time": null,
+      "origin_location": null,
+      "destination_location": null,
+      "supplier": null,
+      "reference_code": null,
+      "status": "CONFIRMED",
+      "notes": null
+    },
+    {
+      "itinerary_id": "ITIN-12AA3A",
+      "trip_id": "TEST-TRIP",
+      "item_type": "flight",
+      "title": "Test Flight Item",
+      "start_time": "2026-09-10T12:00:00Z",
+      "end_time": null,
+      "origin_location": null,
+      "destination_location": null,
+      "supplier": null,
+      "reference_code": null,
+      "status": "CONFIRMED",
+      "notes": null
+    }
+  ],
+  "bookings": [
+    {
+      "booking_ref": "BK-99201",
+      "supplier": "IndiGo Airlines",
+      "service_type": "flight",
+      "passenger_name": "Aarav Sharma",
+      "status": "MODIFIED",
+      "total_amount": 7500.0,
+      "currency": "INR",
+      "booking_date": "2026-08-01T10:00:00Z",
+      "details": {
+        "flight": "6E-204",
+        "pnr": "6E-W8KZ2L",
+        "seat": "12F",
+        "class": "Economy",
+        "meal": "Veg Sandwiches & Masala Tea",
+        "status_update_notes": "Test change"
+      }
+    },
+    {
+      "booking_ref": "BK-44102",
+      "supplier": "The Taj Mahal Palace",
+      "service_type": "hotel",
+      "passenger_name": "Aarav Sharma",
+      "status": "CONFIRMED",
+      "total_amount": 48000.0,
+      "currency": "INR",
+      "booking_date": "2026-08-02T14:20:00Z",
+      "details": {
+        "nights": 3,
+        "room_type": "Heritage Sea View",
+        "city": "Mumbai",
+        "complimentary_breakfast": true
+      }
+    },
+    {
+      "booking_ref": "BK-77810",
+      "supplier": "Indian Railways (IRCTC)",
+      "service_type": "train",
+      "passenger_name": "Aarav Sharma",
+      "status": "CONFIRMED",
+      "total_amount": 3200.0,
+      "currency": "INR",
+      "booking_date": "2026-08-05T09:15:00Z",
+      "details": {
+        "train": "22436 Vande Bharat",
+        "pnr": "2458901234",
+        "coach": "E1",
+        "seat": "24",
+        "quota": "General"
+      }
+    },
+    {
+      "booking_ref": "BK-55219",
+      "supplier": "Incredible India Tourist Transfers",
+      "service_type": "transfer",
+      "passenger_name": "Aarav Sharma",
+      "status": "CONFIRMED",
+      "total_amount": 2800.0,
+      "currency": "INR",
+      "booking_date": "2026-08-06T11:30:00Z",
+      "details": {
+        "vehicle": "Toyota Innova Crysta AC",
+        "driver_name": "Ramesh Kumar",
+        "contact": "+91-9876543210"
+      }
+    },
+    {
+      "booking_ref": "BK-99305",
+      "supplier": "Air India",
+      "service_type": "flight",
+      "passenger_name": "Aarav Sharma",
+      "status": "CONFIRMED",
+      "total_amount": 8900.0,
+      "currency": "INR",
+      "booking_date": "2026-08-07T16:45:00Z",
+      "details": {
+        "flight": "AI-102",
+        "pnr": "AI-J91PKQ",
+        "seat": "4D",
+        "class": "Premium Economy"
+      }
+    }
+  ],
+  "flights": [
+    {
+      "flight_number": "6E-204",
+      "date": "2026-09-10",
+      "origin_airport": "DEL",
+      "destination_airport": "BOM",
+      "scheduled_departure": "2026-09-10T06:15:00Z",
+      "estimated_departure": "2026-09-10T06:15:00Z",
+      "scheduled_arrival": "2026-09-10T08:30:00Z",
+      "estimated_arrival": "2026-09-10T08:30:00Z",
+      "status": "ON_TIME",
+      "gate": "42",
+      "terminal": "3",
+      "delay_minutes": 0,
+      "delay_reason": null
+    },
+    {
+      "flight_number": "AI-102",
+      "date": "2026-09-10",
+      "origin_airport": "BOM",
+      "destination_airport": "DEL",
+      "scheduled_departure": "2026-09-10T19:00:00Z",
+      "estimated_departure": "2026-09-10T19:40:00Z",
+      "scheduled_arrival": "2026-09-10T21:15:00Z",
+      "estimated_arrival": "2026-09-10T21:55:00Z",
+      "status": "DELAYED",
+      "gate": "54",
+      "terminal": "2",
+      "delay_minutes": 40,
+      "delay_reason": "Air traffic congestion at Mumbai airspace during peak evening departures"
+    },
+    {
+      "flight_number": "UK-815",
+      "date": "2026-09-10",
+      "origin_airport": "DEL",
+      "destination_airport": "BLR",
+      "scheduled_departure": "2026-09-10T09:30:00Z",
+      "estimated_departure": "2026-09-10T09:30:00Z",
+      "scheduled_arrival": "2026-09-10T12:15:00Z",
+      "estimated_arrival": "2026-09-10T12:15:00Z",
+      "status": "ON_TIME",
+      "gate": "28B",
+      "terminal": "3",
+      "delay_minutes": 0,
+      "delay_reason": null
+    },
+    {
+      "flight_number": "SG-8169",
+      "date": "2026-09-10",
+      "origin_airport": "DEL",
+      "destination_airport": "GOI",
+      "scheduled_departure": "2026-09-10T11:00:00Z",
+      "estimated_departure": "2026-09-10T11:00:00Z",
+      "scheduled_arrival": "2026-09-10T13:35:00Z",
+      "estimated_arrival": "2026-09-10T13:35:00Z",
+      "status": "DEPARTED",
+      "gate": "14",
+      "terminal": "1D",
+      "delay_minutes": 0,
+      "delay_reason": null
+    },
+    {
+      "flight_number": "AA100",
+      "date": "2026-09-10",
+      "origin_airport": "DEL",
+      "destination_airport": "JFK",
+      "scheduled_departure": "2026-09-10T18:30:00Z",
+      "estimated_departure": "2026-09-10T18:30:00Z",
+      "scheduled_arrival": "2026-09-11T06:30:00Z",
+      "estimated_arrival": "2026-09-11T06:30:00Z",
+      "status": "ON_TIME",
+      "gate": "B22",
+      "terminal": "3",
+      "delay_minutes": 0,
+      "delay_reason": null
+    }
+  ],
+  "trains": [
+    {
+      "train_number": "22436",
+      "date": "2026-09-15",
+      "origin_station": "New Delhi (NDLS)",
+      "destination_station": "Varanasi Junction (BSB)",
+      "current_station": "Kanpur Central (CNB)",
+      "scheduled_time": "2026-09-15T06:00:00Z",
+      "estimated_time": "2026-09-15T06:00:00Z",
+      "status": "RUNNING",
+      "platform": "1",
+      "delay_minutes": 0,
+      "speed_kmh": 130.0
+    },
+    {
+      "train_number": "12952",
+      "date": "2026-09-15",
+      "origin_station": "New Delhi (NDLS)",
+      "destination_station": "Mumbai Central (MMCT)",
+      "current_station": "Kota Junction (KOTA)",
+      "scheduled_time": "2026-09-15T16:55:00Z",
+      "estimated_time": "2026-09-15T17:10:00Z",
+      "status": "DELAYED",
+      "platform": "3",
+      "delay_minutes": 15,
+      "speed_kmh": 120.5
+    },
+    {
+      "train_number": "12004",
+      "date": "2026-09-15",
+      "origin_station": "New Delhi (NDLS)",
+      "destination_station": "Lucknow Charbagh (LKO)",
+      "current_station": "Ghaziabad (GZB)",
+      "scheduled_time": "2026-09-15T06:10:00Z",
+      "estimated_time": "2026-09-15T06:10:00Z",
+      "status": "ON_TIME",
+      "platform": "6",
+      "delay_minutes": 0,
+      "speed_kmh": 110.0
+    },
+    {
+      "train_number": "Eurostar-9014",
+      "date": "2026-09-15",
+      "origin_station": "London St Pancras",
+      "destination_station": "Paris Gare du Nord",
+      "current_station": "Ashford International",
+      "scheduled_time": "2026-09-15T09:00:00Z",
+      "estimated_time": "2026-09-15T09:00:00Z",
+      "status": "RUNNING",
+      "platform": "5",
+      "delay_minutes": 0,
+      "speed_kmh": 285.5
+    }
+  ],
+  "gps_logs": [
+    {
+      "device_id": "DEV-TOUR-101",
+      "latitude": 28.6129,
+      "longitude": 77.2295,
+      "timestamp": "2026-09-05T10:00:00Z",
+      "speed_kmh": 28.5,
+      "heading_deg": 180.0,
+      "altitude_m": 215.0
+    },
+    {
+      "device_id": "DEV-TOUR-101",
+      "latitude": 28.6315,
+      "longitude": 77.2167,
+      "timestamp": "2026-09-05T10:05:00Z",
+      "speed_kmh": 32.0,
+      "heading_deg": 135.0,
+      "altitude_m": 214.0
+    },
+    {
+      "device_id": "DEV-TOUR-101",
+      "latitude": 28.5562,
+      "longitude": 77.1,
+      "timestamp": "2026-09-05T10:15:00Z",
+      "speed_kmh": 45.0,
+      "heading_deg": 220.0,
+      "altitude_m": 230.0
+    },
+    {
+      "device_id": "TEST-DEV-99",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timestamp": "2026-09-05T12:00:00Z",
+      "speed_kmh": 0.0,
+      "heading_deg": 0.0,
+      "altitude_m": 0.0
+    },
+    {
+      "device_id": "TEST-DEV-99",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timestamp": "2026-09-05T12:00:00Z",
+      "speed_kmh": 0.0,
+      "heading_deg": 0.0,
+      "altitude_m": 0.0
+    },
+    {
+      "device_id": "TEST-DEV-1",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "timestamp": "2026-09-05T12:00:00Z",
+      "speed_kmh": 0.0,
+      "heading_deg": 0.0,
+      "altitude_m": 0.0
+    }
+  ],
+  "guide_reports": [
+    {
+      "report_id": "REP-8801",
+      "guide_id": "GUIDE-RAJESH",
+      "location": "Taj Mahal East Gate, Agra",
+      "report_type": "local_disruption",
+      "severity": "MEDIUM",
+      "message": "Heavy tourist queue at East Gate ticketing counter; rerouting tour group to West Gate entry point for expedited security clearance.",
+      "timestamp": "2026-09-05T09:30:00Z"
+    },
+    {
+      "report_id": "REP-8802",
+      "guide_id": "GUIDE-SUNITA",
+      "location": "Connaught Place Inner Circle, New Delhi",
+      "report_type": "road_issue",
+      "severity": "HIGH",
+      "message": "VIP convoy movement along Janpath causing rolling roadblocks toward India Gate; bus detour via Barakhamba Road recommended.",
+      "timestamp": "2026-09-05T10:15:00Z"
+    },
+    {
+      "report_id": "REP-8803",
+      "guide_id": "GUIDE-VIKRAM",
+      "location": "Gateway of India Jetty, Colaba, Mumbai",
+      "report_type": "weather_hazard",
+      "severity": "MEDIUM",
+      "message": "High tide alert and choppy waters near Apollo Bunder; Elephanta Island ferry departures temporarily paused for 45 minutes.",
+      "timestamp": "2026-09-05T11:00:00Z"
+    },
+    {
+      "report_id": "REP-8804",
+      "guide_id": "GUIDE-AMIT",
+      "location": "Hawa Mahal, Badi Choupad, Jaipur",
+      "report_type": "general_message",
+      "severity": "LOW",
+      "message": "Pink City heritage walk commenced on schedule; pleasant morning breeze and clear visibility.",
+      "timestamp": "2026-09-05T08:00:00Z"
+    },
+    {
+      "guide_id": "GUIDE-TEST",
+      "location": "Paris",
+      "report_type": "road_issue",
+      "severity": "HIGH",
+      "message": "Traffic detour required",
+      "report_id": "REP-F4B220",
+      "timestamp": "2026-09-05T18:09:22.263351+00:00"
+    },
+    {
+      "guide_id": "GUIDE-TEST",
+      "location": "Paris",
+      "report_type": "road_issue",
+      "severity": "HIGH",
+      "message": "Traffic detour required",
+      "report_id": "REP-7A57FE",
+      "timestamp": "2026-09-05T18:09:42.617490+00:00"
+    }
+  ],
+  "locations": [
+    {
+      "query": "IGI Airport Delhi",
+      "place_name": "Indira Gandhi International Airport (DEL)",
+      "address": "Terminal 3, New Delhi, Delhi 110037, India",
+      "latitude": 28.5562,
+      "longitude": 77.1,
+      "city": "New Delhi",
+      "country": "India",
+      "postal_code": "110037",
+      "points_of_interest": [
+        "Terminal 3",
+        "Aerocity Worldmark",
+        "Delhi Airport Express Metro",
+        "GMR Cargo Terminal"
+      ]
+    },
+    {
+      "query": "Taj Mahal Agra",
+      "place_name": "Taj Mahal",
+      "address": "Dharmapuri, Forest Colony, Tajganj, Agra, Uttar Pradesh 282001, India",
+      "latitude": 27.1751,
+      "longitude": 78.0421,
+      "city": "Agra",
+      "country": "India",
+      "postal_code": "282001",
+      "points_of_interest": [
+        "Mughal Gardens",
+        "Mehtab Bagh",
+        "Agra Fort",
+        "Yamuna River Bank"
+      ]
+    },
+    {
+      "query": "Gateway of India Mumbai",
+      "place_name": "Gateway of India",
+      "address": "Apollo Bandar, Colaba, Mumbai, Maharashtra 400001, India",
+      "latitude": 18.922,
+      "longitude": 72.8347,
+      "city": "Mumbai",
+      "country": "India",
+      "postal_code": "400001",
+      "points_of_interest": [
+        "The Taj Mahal Palace Hotel",
+        "Elephanta Ferry Terminal",
+        "Colaba Causeway"
+      ]
+    },
+    {
+      "query": "Kempegowda Airport Bengaluru",
+      "place_name": "Kempegowda International Airport (BLR)",
+      "address": "KIAL Rd, Devanahalli, Bengaluru, Karnataka 560300, India",
+      "latitude": 13.1986,
+      "longitude": 77.7066,
+      "city": "Bengaluru",
+      "country": "India",
+      "postal_code": "560300",
+      "points_of_interest": [
+        "Terminal 2 Garden Terminal",
+        "The Quad by BLR",
+        "Aerobridge Pier"
+      ]
+    },
+    {
+      "query": "Hawa Mahal Jaipur",
+      "place_name": "Hawa Mahal (Palace of Winds)",
+      "address": "Hawa Mahal Rd, Badi Choupad, J.D.A. Market, Jaipur, Rajasthan 302002, India",
+      "latitude": 26.9239,
+      "longitude": 75.8267,
+      "city": "Jaipur",
+      "country": "India",
+      "postal_code": "302002",
+      "points_of_interest": [
+        "City Palace",
+        "Jantar Mantar",
+        "Johari Bazaar"
+      ]
+    },
+    {
+      "query": "Eiffel Tower",
+      "place_name": "Eiffel Tower (La Tour Eiffel)",
+      "address": "Champ de Mars, 5 Av. Anatole France, 75007 Paris, France",
+      "latitude": 48.8584,
+      "longitude": 2.2945,
+      "city": "Paris",
+      "country": "France",
+      "postal_code": "75007",
+      "points_of_interest": [
+        "Champ de Mars",
+        "Trocad\u00e9ro",
+        "Seine River Cruise Terminal"
+      ]
+    },
+    {
+      "query": "JFK Airport",
+      "place_name": "John F. Kennedy International Airport",
+      "address": "Queens, NY 11430, United States",
+      "latitude": 40.6413,
+      "longitude": -73.7781,
+      "city": "New York",
+      "country": "United States",
+      "postal_code": "11430",
+      "points_of_interest": [
+        "Terminal 4",
+        "TWA Hotel",
+        "AirTrain JFK"
+      ]
+    }
+  ],
+  "historical_data": [
+    {
+      "location": "New Delhi",
+      "date_from": "2025-09-01",
+      "date_to": "2025-09-30",
+      "category": "all",
+      "historical_weather_avg_temp_c": 29.8,
+      "historical_rainfall_mm": 110.4,
+      "historical_avg_traffic_delay_mins": 32.0,
+      "delay_risk_score": "HIGH",
+      "historical_records": [
+        {
+          "month": "September",
+          "monsoon_intensity": "Moderate Retreating",
+          "peak_traffic_hours": "08:30-10:30, 17:30-20:00"
+        }
+      ]
+    },
+    {
+      "location": "Mumbai",
+      "date_from": "2025-09-01",
+      "date_to": "2025-09-30",
+      "category": "all",
+      "historical_weather_avg_temp_c": 28.2,
+      "historical_rainfall_mm": 270.0,
+      "historical_avg_traffic_delay_mins": 38.5,
+      "delay_risk_score": "HIGH",
+      "historical_records": [
+        {
+          "month": "September",
+          "monsoon_intensity": "Heavy Showers",
+          "peak_traffic_hours": "08:00-11:00, 17:30-20:30"
+        }
+      ]
+    },
+    {
+      "location": "Bengaluru",
+      "date_from": "2025-09-01",
+      "date_to": "2025-09-30",
+      "category": "all",
+      "historical_weather_avg_temp_c": 24.1,
+      "historical_rainfall_mm": 140.0,
+      "historical_avg_traffic_delay_mins": 35.0,
+      "delay_risk_score": "HIGH",
+      "historical_records": [
+        {
+          "month": "September",
+          "peak_traffic_hours": "08:30-11:00 (Silk Board / Outer Ring Rd), 17:00-20:30"
+        }
+      ]
+    },
+    {
+      "location": "Jaipur",
+      "date_from": "2025-09-01",
+      "date_to": "2025-09-30",
+      "category": "all",
+      "historical_weather_avg_temp_c": 30.5,
+      "historical_rainfall_mm": 55.0,
+      "historical_avg_traffic_delay_mins": 15.0,
+      "delay_risk_score": "MODERATE",
+      "historical_records": [
+        {
+          "month": "September",
+          "peak_traffic_hours": "09:00-10:30, 18:00-19:30"
+        }
+      ]
+    },
+    {
+      "location": "London",
+      "date_from": "2025-09-01",
+      "date_to": "2025-09-30",
+      "category": "all",
+      "historical_weather_avg_temp_c": 18.5,
+      "historical_rainfall_mm": 45.2,
+      "historical_avg_traffic_delay_mins": 18.0,
+      "delay_risk_score": "MODERATE",
+      "historical_records": [
+        {
+          "month": "September",
+          "avg_rainy_days": 9,
+          "peak_traffic_hours": "08:00-09:30, 17:00-18:30"
+        }
+      ]
+    }
+  ]
+}
