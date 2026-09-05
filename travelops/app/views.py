@@ -1,7 +1,8 @@
 from django.contrib.auth.models import Group, User
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, generics
 
-from app.serializers import GroupSerializer, UserSerializer
+from app.serializers import GroupSerializer, UserSerializer, TripSerializer
+from .models import Trip
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -22,3 +23,15 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all().order_by("name")
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class TripListCreateView(generics.ListCreateAPIView):
+
+    queryset = Trip.objects.all()
+    serializer_class = TripSerializer
+
+
+class TripUpdateView(generics.UpdateAPIView):
+
+    queryset = Trip.objects.all()
+    serializer_class = TripSerializer

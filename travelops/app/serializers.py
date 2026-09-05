@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group, User
 from rest_framework import serializers
+from .models import Trip
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -12,3 +13,19 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Group
         fields = ["url", "name"]
+
+
+
+
+class TripSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Trip
+        fields = [
+            'id',
+            'guide_id',
+            'name',
+            'start_time',
+            'end_time',
+            'status',
+        ]
