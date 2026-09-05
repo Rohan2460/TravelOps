@@ -49,6 +49,15 @@ The analysis can identify:
 * Known risks
 * Potential disruption warnings
 
+Every trip is placed in a phase derived from its start time — **UPCOMING** before departure and **ACTIVE** once it begins — and readiness is summarized as one of four statuses:
+
+* **READY**
+* **READY_WITH_WARNINGS**
+* **NOT_READY**
+* **UNKNOWN** (insufficient data)
+
+The same analysis is available for both upcoming and active trips, so an operator sees a consistent view before the trip starts and while it is running.
+
 ### 4. Disruption Detection
 
 During a trip, the system can receive or record disruption information from sources such as:
@@ -89,11 +98,18 @@ TravelOps evaluates basic time and operational constraints, including:
 * Transportation departure times
 * Cancellation or modification deadlines
 
+The analysis is organized into five areas — **completeness**, **feasibility**, **deadlines**, **external conditions**, and **risks**. Alongside any warnings it reports neutral, comparable metrics, such as:
+
+* Leg durations (planned and actual)
+* The time gap between consecutive legs meeting at the same location
+* Minimum required buffer versus available free buffer per connection
+* Time remaining before departures and check-in deadlines
+
 It calculates available buffers where possible and assigns a simple severity:
 
 **Low → Medium → High → Critical**
 
-The first version uses **deterministic rules and calculations rather than machine-learning prediction**, making the results easier to understand and explain. 
+Every warning or failure includes a clear reason. The first version uses **deterministic rules and calculations rather than machine-learning prediction**, making the results easier to understand and explain. 
 
 ### 7. Operator Dashboard
 

@@ -22,13 +22,20 @@ The dependency manifest is `requirements.txt` at the repository root. Install it
 
 ## Current implementation boundaries
 
-- The project currently routes only `/admin/`; add app URL modules and include them from `travelops/travelops/urls.py` as features are implemented.
-- `app` is currently a scaffold and is not registered in `INSTALLED_APPS`; register it before adding app models, migrations, or app-owned tests that need Django discovery.
-- Django REST framework is available through the `rest_framework` package in `requirements.txt`; add it to `INSTALLED_APPS` when DRF-powered features are introduced, and keep API routes under an app URL module included by the project URL configuration.
+- `app` is registered in `INSTALLED_APPS`, and DRF (`rest_framework`) is enabled. App routes live in `travelops/app/urls.py` and are included from `travelops/travelops/urls.py` under `/api/`.
 - Prefer DRF serializers for request/response validation and serialization, and use API views or viewsets with explicit permissions. Register viewsets through a DRF router only when the resource follows standard CRUD routing.
 - Use Django migrations for schema changes. The SQLite database is checked in, so avoid manual schema edits and be deliberate about database-file changes.
 - Keep disruption analysis deterministic and explainable. Recommendations assist a human operator; do not silently automate booking changes or cancellations.
 - The generated settings use development-only values (`DEBUG = True`, hardcoded secret key, empty `ALLOWED_HOSTS`). Do not treat them as production configuration.
+
+## Trip analysis (readiness) details
+
+- The full trip analysis is computed on demand in `travelops/app/analysis.py` via `analyze_trip(trip, now=None)`. It is deterministic and returns neutral metrics plus severity-based findings; it does not write to the database.
+- Route: `GET /api/trips/<pk>/analysis/` (`TripAnalysisView` in `travelops/app/views.py`, serializer `ReadinessDetailSerializer`). Works for both upcoming and active trips.
+- Response shape: `status` (`READY`/`READY_WITH_WARNINGS`/`NOT_READY`/`UNKNOWN`), `phase` (`UPCOMING`/`ACTIVE`), `summary`, `timeline` (`elements`, `connections`, `deadlines`), and `checks` (`completeness`, `feasibility`, `deadlines`, `external`, `risks`).
+- `elements` carry planned/actual durations, expected arrival (`effective_end`), delay minutes, started flag, and booking status. `connections` reflect the gap between a leg's arrival and the next departure (`connection_minutes`), the required `minimum_buffer_minutes`, and the `free_buffer_minutes` (negative means infeasible). `deadlines` cover transport departures and hotel check-ins.
+- Delay handling: for a started leg the observed delay (`actual_start - planned_start`) is used; otherwise delay minutes are parsed deterministically from open `flight_delay`/`train_delay` events and their impacts.
+- The trip overview (summary `readiness` field) deliberately shows the latest stored `ReadinessAssessment` label (`ready`/`attention`/`incomplete`), not the live analysis. Keep those two surfaces distinct when changing behavior.
 
 ## Change and validation workflow
 
