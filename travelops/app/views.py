@@ -3,6 +3,7 @@ from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import (
     Case,
@@ -13,10 +14,11 @@ from .models import (
     Trip,
     TripRisk,
 )
-
+from .analysis import analyze_trip
 from .serializers import (
     UserSerializer,
     GroupSerializer,
+    ReadinessDetailSerializer,
     TripCreateSerializer,
     TripDetailSerializer,
     TripSummarySerializer,
@@ -130,3 +132,20 @@ class TripUpdateView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == 'GET':
             return TripDetailSerializer
         return TripWriteSerializer
+
+
+class TripAnalysisView(APIView):
+    """
+    Returns a unified trip analysis for both upcoming and active trips.
+    """
+
+    def get(self, request, pk=None):
+        try:
+            trip = trip_detail_queryset().get(pk=pk)
+        except Trip.DoesNotExist:
+            return Response(
+                {"detail": "Trip not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        analysis = analyze_trip(trip, now=timezone.now())
+        return Response(ReadinessDetailSerializer(analysis).data)

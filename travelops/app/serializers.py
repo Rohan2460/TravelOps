@@ -226,6 +226,89 @@ class ReadinessAssessmentSerializer(serializers.ModelSerializer):
         ]
 
 
+class ReadinessWarningSerializer(serializers.Serializer):
+    severity = serializers.CharField(read_only=True)
+    reason = serializers.CharField(read_only=True)
+
+
+class ReadinessCheckSerializer(serializers.Serializer):
+    status = serializers.CharField(read_only=True)
+    warnings = ReadinessWarningSerializer(many=True, read_only=True)
+
+
+class TripElementMetricSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    sequence = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    start = serializers.CharField(read_only=True, allow_null=True)
+    end = serializers.CharField(read_only=True, allow_null=True)
+    planned_start = serializers.DateTimeField(read_only=True)
+    planned_end = serializers.DateTimeField(read_only=True)
+    planned_duration_minutes = serializers.IntegerField(read_only=True)
+    actual_start = serializers.DateTimeField(read_only=True, allow_null=True)
+    actual_end = serializers.DateTimeField(read_only=True, allow_null=True)
+    actual_duration_minutes = serializers.IntegerField(
+        read_only=True, allow_null=True
+    )
+    effective_end = serializers.DateTimeField(read_only=True)
+    delay_minutes = serializers.IntegerField(read_only=True)
+    started = serializers.BooleanField(read_only=True)
+    booking_status = serializers.CharField(
+        read_only=True, allow_null=True
+    )
+
+
+class ConnectionMetricSerializer(serializers.Serializer):
+    from_id = serializers.IntegerField(read_only=True)
+    from_name = serializers.CharField(read_only=True)
+    to_id = serializers.IntegerField(read_only=True)
+    to_name = serializers.CharField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    from_arrival = serializers.DateTimeField(read_only=True)
+    to_departure = serializers.DateTimeField(read_only=True)
+    connection_minutes = serializers.IntegerField(read_only=True)
+    minimum_buffer_minutes = serializers.IntegerField(read_only=True)
+    free_buffer_minutes = serializers.IntegerField(read_only=True)
+    delayed = serializers.BooleanField(read_only=True)
+    kind = serializers.CharField(read_only=True)
+
+
+class DeadlineMetricSerializer(serializers.Serializer):
+    kind = serializers.CharField(read_only=True)
+    element_id = serializers.IntegerField(read_only=True)
+    element_name = serializers.CharField(read_only=True)
+    deadline = serializers.DateTimeField(read_only=True)
+    expected = serializers.DateTimeField(read_only=True, allow_null=True)
+    satisfied = serializers.BooleanField(read_only=True)
+    remaining_minutes = serializers.IntegerField(
+        read_only=True, allow_null=True
+    )
+    buffer_minutes = serializers.IntegerField(
+        read_only=True, allow_null=True
+    )
+
+
+class TimelineSerializer(serializers.Serializer):
+    elements = TripElementMetricSerializer(many=True, read_only=True)
+    connections = ConnectionMetricSerializer(many=True, read_only=True)
+    deadlines = DeadlineMetricSerializer(many=True, read_only=True)
+
+
+class ReadinessDetailSerializer(serializers.Serializer):
+    status = serializers.CharField(read_only=True)
+    phase = serializers.CharField(read_only=True)
+    summary = serializers.ListField(child=serializers.CharField(), read_only=True)
+    timeline = TimelineSerializer(read_only=True)
+    checks = serializers.SerializerMethodField(read_only=True)
+
+    def get_checks(self, analysis):
+        return {
+            name: ReadinessCheckSerializer(check).data
+            for name, check in analysis["checks"].items()
+        }
+
+
 class ItineraryChangeSerializer(serializers.ModelSerializer):
 
     class Meta:
