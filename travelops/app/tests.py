@@ -1,5 +1,8 @@
 from datetime import timedelta
+from unittest import mock
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.conf import settings
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -18,6 +21,7 @@ from .models import (
     TripRisk,
 )
 from .analysis import analyze_trip
+from .gemini_import import GeminiApiError, GeminiConfigurationError
 
 NON_TRIP_ROUTES = [
     '/api/locations/',
@@ -979,3 +983,404 @@ class AnalysisApiTests(APITestCase):
     def test_analysis_endpoint_returns_404_for_missing_trip(self):
         response = self.client.get("/api/trips/99999/analysis/")
         self.assertEqual(response.status_code, 404)
+
+
+class ImportExtractionUnitTests(TestCase):
+    """Unit tests for the Gemini extraction service in gemini_import."""
+
+    def _payload(self):
+        return {
+            "guide_id": 0,
+            "name": "Import Trip",
+            "start_time": "2026-10-01T00:00:00Z",
+            "end_time": "2026-10-08T00:00:00Z",
+            "status": "upcoming",
+            "itinerary_elements": [
+                {
+                    "type": "flight",
+                    "name": "Flight AI-77",
+                    "sequence": 1,
+                    "planned_start": "2026-10-01T06:30:00Z",
+                    "planned_end": "2026-10-01T10:00:00Z",
+                    "status": "scheduled",
+                    "start_location": {
+                        "name": "Mumbai Airport",
+                        "latitude": 19.0896,
+                        "longitude": 72.8656,
+                        "address": "Mumbai",
+                    },
+                    "end_location": {
+                        "name": "",
+                        "latitude": 0.0,
+                        "longitude": 0.0,
+                        "address": "",
+                    },
+                    "bookings": [
+                        {
+                            "supplier_name": "Air India",
+                            "booking_reference": "AI-77",
+                            "status": "confirmed",
+                        },
+                        {
+                            "supplier_name": "",
+                            "booking_reference": "",
+                            "status": "",
+                            "notes": "",
+                        },
+                    ],
+                }
+            ],
+            "dependencies": [
+                {
+                    "from_element_index": 0,
+                    "to_element_index": 1,
+                    "type": "transfer",
+                    "minimum_buffer": "PT1H30M",
+                },
+                {
+                    "from_element_index": 0,
+                    "to_element_index": 1,
+                    "type": "",
+                    "minimum_buffer": "",
+                },
+            ],
+        }
+
+    def test_extract_trip_calls_gemini_with_structured_output_schema(self):
+        from . import gemini_import as gi
+
+        payload = self._payload()
+        parsed = gi.TripExtraction(**payload)
+        fake_response = mock.Mock()
+        fake_response.parsed = parsed
+
+        with mock.patch("app.gemini_import.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.return_value = fake_response
+
+            data, warnings = gi.extract_trip(
+                b"pdf-bytes", "application/pdf", filename="itinerary.pdf"
+            )
+
+        call = fake_client.models.generate_content.call_args
+        self.assertEqual(call.kwargs["model"], settings.GEMINI_MODEL)
+        config = call.kwargs["config"]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertIs(config.response_schema, gi.TripExtraction)
+
+        document_part = call.kwargs["contents"][1]
+        self.assertEqual(document_part.inline_data.mime_type, "application/pdf")
+        self.assertEqual(document_part.inline_data.data, b"pdf-bytes")
+
+        self.assertEqual(data["name"], "Import Trip")
+        element = data["itinerary_elements"][0]
+        self.assertEqual(element["start_location"]["name"], "Mumbai Airport")
+        self.assertIsNone(element["end_location"])
+        self.assertEqual(len(element["bookings"]), 1)
+        self.assertEqual(len(data["dependencies"]), 1)
+        self.assertTrue(any("booking" in warning for warning in warnings))
+        self.assertTrue(any("dependency" in warning for warning in warnings))
+
+    def test_extract_trip_uses_requested_model_override(self):
+        from . import gemini_import as gi
+
+        fake_response = mock.Mock()
+        fake_response.parsed = gi.TripExtraction(**self._payload())
+
+        with mock.patch("app.gemini_import.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.return_value = fake_response
+
+            gi.extract_trip(
+                b"data", "image/png", model="gemini-2.5-flash-lite"
+            )
+
+        call = fake_client.models.generate_content.call_args
+        self.assertEqual(call.kwargs["model"], "gemini-2.5-flash-lite")
+
+    def test_extract_trip_raises_when_api_key_missing(self):
+        from . import gemini_import as gi
+
+        with self.settings(GEMINI_API_KEY=""):
+            with self.assertRaises(gi.GeminiConfigurationError):
+                gi.extract_trip(b"data", "application/pdf")
+
+    def test_extract_trip_raises_when_parsed_output_missing(self):
+        from . import gemini_import as gi
+
+        fake_response = mock.Mock()
+        fake_response.parsed = None
+
+        with mock.patch("app.gemini_import.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.return_value = fake_response
+            with self.assertRaises(gi.GeminiApiError):
+                gi.extract_trip(b"data", "application/pdf")
+
+    def test_extract_trip_wraps_gemini_errors(self):
+        from . import gemini_import as gi
+
+        with mock.patch("app.gemini_import.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.side_effect = \
+                RuntimeError("upstream boom")
+            with self.assertRaises(gi.GeminiApiError):
+                gi.extract_trip(b"data", "application/pdf")
+
+    def test_resolve_mime_type_accepts_supported_uploads(self):
+        from .gemini_import import resolve_mime_type
+
+        self.assertEqual(
+            resolve_mime_type("scan.pdf", "application/pdf"), "application/pdf"
+        )
+        self.assertEqual(
+            resolve_mime_type("photo.jpeg", "image/jpeg"), "image/jpeg"
+        )
+        self.assertEqual(
+            resolve_mime_type("scan.png", "application/octet-stream"),
+            "image/png",
+        )
+        self.assertIsNone(
+            resolve_mime_type("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        )
+
+    def test_extraction_schema_mirrors_trip_create_serializer(self):
+        from . import gemini_import as gi
+        from .serializers import (
+            BookingCreateSerializer,
+            DependencyCreateSerializer,
+            ItineraryElementCreateSerializer,
+            LocationSerializer,
+            TripCreateSerializer,
+        )
+
+        self.assertEqual(
+            set(gi.TripExtraction.model_fields),
+            set(TripCreateSerializer().fields),
+        )
+        self.assertEqual(
+            set(gi.ElementExtraction.model_fields),
+            set(ItineraryElementCreateSerializer().fields),
+        )
+        self.assertEqual(
+            set(gi.BookingExtraction.model_fields),
+            set(BookingCreateSerializer().fields),
+        )
+        self.assertEqual(
+            set(gi.LocationExtraction.model_fields),
+            set(LocationSerializer().fields) - {"id"},
+        )
+        self.assertEqual(
+            set(gi.DependencyExtraction.model_fields),
+            set(DependencyCreateSerializer().fields),
+        )
+
+
+class TripImportApiTests(APITestCase):
+    full_payload = {
+        "guide_id": 0,
+        "name": "Imported Kerala Trip",
+        "start_time": "2026-10-01T00:00:00Z",
+        "end_time": "2026-10-08T00:00:00Z",
+        "status": "upcoming",
+        "itinerary_elements": [
+            {
+                "type": "flight",
+                "name": "Flight AI-77",
+                "sequence": 1,
+                "planned_start": "2026-10-01T06:30:00Z",
+                "planned_end": "2026-10-01T10:00:00Z",
+                "status": "scheduled",
+                "start_location": {
+                    "name": "Mumbai Airport",
+                    "latitude": 19.0896,
+                    "longitude": 72.8656,
+                    "address": "Mumbai",
+                },
+                "end_location": {
+                    "name": "Trivandrum Airport",
+                    "latitude": 8.4822,
+                    "longitude": 76.9201,
+                    "address": "TRV",
+                },
+                "bookings": [
+                    {
+                        "supplier_name": "Air India",
+                        "booking_reference": "AI-77",
+                        "status": "confirmed",
+                    }
+                ],
+            },
+            {
+                "type": "road_transfer",
+                "name": "Airport to Kovalam",
+                "sequence": 2,
+                "planned_start": "2026-10-01T11:00:00Z",
+                "planned_end": "2026-10-01T12:00:00Z",
+                "status": "scheduled",
+                "start_location": {
+                    "name": "Trivandrum Airport",
+                    "latitude": 8.4822,
+                    "longitude": 76.9201,
+                    "address": "TRV",
+                },
+                "end_location": {
+                    "name": "Kovalam",
+                    "latitude": 8.4004,
+                    "longitude": 76.9786,
+                    "address": "Kovalam Beach",
+                },
+            },
+        ],
+        "dependencies": [
+            {
+                "from_element_index": 0,
+                "to_element_index": 1,
+                "type": "transfer",
+                "minimum_buffer": "PT1H30M",
+            }
+        ],
+    }
+
+    def _extract_patch(self, payload=None, warnings=None):
+        payload = self.full_payload if payload is None else payload
+        return mock.patch(
+            "app.views.gemini_import.extract_trip",
+            return_value=(dict(payload), warnings or []),
+        )
+
+    def test_extract_requires_file_upload(self):
+        response = self.client.post("/api/trips/import/extract/")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("file", response.data)
+
+    def test_extract_rejects_unsupported_file_type(self):
+        notes = SimpleUploadedFile("notes.txt", b"plain text", content_type="text/plain")
+        response = self.client.post(
+            "/api/trips/import/extract/",
+            {"file": notes},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unsupported file type", response.data["file"][0])
+
+    def test_extract_rejects_oversized_file(self):
+        with mock.patch("app.serializers.MAX_FILE_BYTES", 100):
+            oversized = SimpleUploadedFile(
+                "large.pdf", b"x" * 200, content_type="application/pdf"
+            )
+            response = self.client.post(
+                "/api/trips/import/extract/",
+                {"file": oversized},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("byte limit", response.data["file"][0])
+
+    def test_extract_returns_structured_payload_and_preview(self):
+        itinerary = SimpleUploadedFile(
+            "itinerary.pdf", b"pdf-bytes", content_type="application/pdf"
+        )
+        with self._extract_patch(warnings=["1 booking(s) dropped."]):
+            response = self.client.post(
+                "/api/trips/import/extract/",
+                {"file": itinerary},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["model"], settings.GEMINI_MODEL)
+        self.assertEqual(response.data["source_file"]["mime_type"], "application/pdf")
+        self.assertEqual(response.data["extracted"]["name"], "Imported Kerala Trip")
+        self.assertEqual(
+            len(response.data["extracted"]["itinerary_elements"]), 2
+        )
+        self.assertTrue(response.data["valid"])
+        self.assertIsNone(response.data["errors"])
+        self.assertEqual(response.data["warnings"], ["1 booking(s) dropped."])
+
+    def test_extract_surfaces_validation_errors_in_preview(self):
+        broken = dict(self.full_payload)
+        broken["name"] = ""
+        itinerary = SimpleUploadedFile(
+            "itinerary.png", b"png-bytes", content_type="image/png"
+        )
+        with self._extract_patch(payload=broken):
+            response = self.client.post(
+                "/api/trips/import/extract/",
+                {"file": itinerary},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["valid"])
+        self.assertIn("name", response.data["errors"])
+
+    def test_extract_without_api_key_returns_503(self):
+        itinerary = SimpleUploadedFile(
+            "itinerary.pdf", b"pdf-bytes", content_type="application/pdf"
+        )
+        with mock.patch(
+            "app.views.gemini_import.extract_trip",
+            side_effect=GeminiConfigurationError(
+                "GEMINI_API_KEY is not configured in the environment."
+            ),
+        ):
+            response = self.client.post(
+                "/api/trips/import/extract/",
+                {"file": itinerary},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 503)
+
+    def test_extract_maps_upstream_gemini_error_to_502(self):
+        itinerary = SimpleUploadedFile(
+            "itinerary.pdf", b"pdf-bytes", content_type="application/pdf"
+        )
+        with mock.patch(
+            "app.views.gemini_import.extract_trip",
+            side_effect=GeminiApiError("upstream boom"),
+        ):
+            response = self.client.post(
+                "/api/trips/import/extract/",
+                {"file": itinerary},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("upstream boom", response.data["detail"])
+
+    def test_confirm_creates_trip_from_extracted_payload(self):
+        response = self.client.post(
+            "/api/trips/import/confirm/",
+            self.full_payload,
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "Imported Kerala Trip")
+        self.assertEqual(len(response.data["itinerary_elements"]), 2)
+
+        trip = Trip.objects.get(name="Imported Kerala Trip")
+        self.assertEqual(trip.itinerary_elements.count(), 2)
+        self.assertEqual(
+            trip.itinerary_elements.get(sequence=1).bookings.count(), 1
+        )
+        self.assertEqual(
+            trip.itinerary_elements.get(sequence=2).incoming_dependencies.count(),
+            1,
+        )
+        self.assertEqual(Location.objects.count(), 4)
+
+    def test_confirm_with_invalid_payload_returns_400(self):
+        broken = dict(self.full_payload)
+        broken["name"] = ""
+        response = self.client.post(
+            "/api/trips/import/confirm/",
+            broken,
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Trip.objects.filter(
+            name="Imported Kerala Trip"
+        ).exists() is False)

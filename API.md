@@ -258,6 +258,8 @@ Stored readiness snapshot (used for the trip **overview** label only).
 | `/api/trips/<pk>/` | PUT / PATCH | `TripWriteSerializer` | `TripDetailSerializer` | Update base fields |
 | `/api/trips/<pk>/` | DELETE | — | 204 | Delete trip |
 | `/api/trips/<pk>/analysis/` | GET | — | `ReadinessDetailSerializer` | Computed live analysis (upcoming or active) |
+| `/api/trips/import/extract/` | POST | multipart `file` (+ optional `model`) | extraction JSON | Send image/PDF to Gemini, get trip JSON + validation preview (no DB write) |
+| `/api/trips/import/confirm/` | POST | `TripCreateSerializer` | `TripDetailSerializer` (201) | Create a trip from an extracted payload |
 
 ### Trip summary (`TripSummarySerializer`)
 
@@ -318,6 +320,94 @@ Includes `id`, `guide_id`, `name`, `start_time`, `end_time`, `status` and:
 - **Location input**: a location may be an existing id (`int`) or an inline object (`name`, `latitude`, `longitude`, `address`) which is created.
 - **Dependencies** reference the itinerary elements by their zero-based **index** in the `itinerary_elements` array (`from_element_index`, `to_element_index`).
 - Creation is transactional; invalid location ids or out-of-range dependency indices return `400` and roll back.
+
+### Trip import from documents (Gemini structured outputs)
+
+Two-step, human-in-the-loop flow for importing a trip from an image (PNG/JPEG/WEBP) or PDF:
+
+1. `POST /api/trips/import/extract/` — upload the document. It is sent inline to Gemini (`google-genai` SDK) with `response_mime_type="application/json"` and a fixed extraction schema that mirrors exactly the `TripCreateSerializer` shape above (top-level fields, `itinerary_elements[]`, `start_location`/`end_location` inline objects, `bookings[]`, `dependencies[]`). The file is never stored; extraction happens in-memory.
+2. The model's JSON is normalized (`travelops/app/gemini_import.py`): empty locations become `null`, bookings without a supplier and dependencies without a type/duration are dropped (reported as warnings), and defaults are applied when a document cannot provide them (`guide_id=0`, trip `status="upcoming"`, element `status="scheduled"`).
+3. The response includes a `valid`/`errors` preview produced by running the payload through `TripCreateSerializer`, so problems surface before any DB write.
+4. `POST /api/trips/import/confirm/` — send the extracted JSON (the same body `POST /api/trips/` accepts) to create the trip.
+
+Request limits:
+
+| Constraint | Value |
+| --- | --- |
+| Accepted mime types | `image/png`, `image/jpeg`, `image/webp`, `application/pdf` |
+| Max file size | 20 MB (`MAX_FILE_BYTES` in `travelops/app/gemini_import.py`) |
+| Default model | `gemini-3.5-flash-lite` (overridable per request via `model`, or globally via `GEMINI_MODEL`) |
+
+Extract request: `multipart/form-data` with field `file` (required) and optional `model` (overrides default).
+
+Extract response (200):
+
+```json
+{
+  "model": "gemini-3.5-flash-lite",
+  "source_file": { "name": "itinerary.pdf", "mime_type": "application/pdf" },
+  "extracted": {
+    "guide_id": 0,
+    "name": "Imported Trip",
+    "start_time": "2026-10-01T00:00:00Z",
+    "end_time": "2026-10-08T00:00:00Z",
+    "status": "upcoming",
+    "itinerary_elements": [
+      {
+        "type": "flight",
+        "name": "Flight AI-77",
+        "sequence": 1,
+        "planned_start": "2026-10-01T06:30:00Z",
+        "planned_end": "2026-10-01T10:00:00Z",
+        "status": "scheduled",
+        "start_location": { "name": "Mumbai Airport", "latitude": 19.0896, "longitude": 72.8656, "address": "Mumbai" },
+        "end_location": { "name": "Trivandrum Airport", "latitude": 8.4822, "longitude": 76.9201, "address": "TRV" },
+        "bookings": [ { "supplier_name": "Air India", "booking_reference": "AI-77", "status": "confirmed" } ]
+      }
+    ],
+    "dependencies": []
+  },
+  "valid": true,
+  "errors": null,
+  "warnings": []
+}
+```
+
+Error mapping:
+
+| Condition | Status |
+| --- | --- |
+| Missing `file` field / unsupported type / over size limit | `400` with DRF field errors (e.g. `{"file": ["..."]}`), rendered inline on the browsable form |
+| `GEMINI_API_KEY` not set | `503` |
+| Upstream Gemini failure or no structured output | `502` |
+
+### Browser usage (DRF browsable API)
+
+The extract endpoint exposes a `TripImportSerializer` (`file` + optional `model`), so the DRF browsable API renders a real file-input form. To import from the browser:
+
+1. Open `http://127.0.0.1:8000/api/trips/import/extract/` in a browser. A `405 Method Not Allowed` banner for GET is expected (the endpoint is POST-only); the **POST form with the file input** is rendered below it.
+2. Pick an image (PNG/JPEG/WEBP) or PDF in the `File` field, optionally set `Model`, and submit.
+3. The JSON response — `extracted` (the trip payload), `valid`, `errors`, `warnings` — appears in the page. If `valid` is `false`, fix the flagged fields in the `extracted` JSON before confirming.
+4. Create the trip by POSTing `extracted` to `/api/trips/import/confirm/`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/trips/import/confirm/ \
+  -H "Content-Type: application/json" \
+  -d '{"guide_id":0,"name":"Imported Trip","start_time":"2026-10-01T00:00:00Z","end_time":"2026-10-08T00:00:00Z","status":"upcoming","itinerary_elements":[],"dependencies":[]}'
+```
+
+### Verified live example
+
+Testing the flow with `eg1.png` (a trip-confirmation email screenshot, `gemini-3.5-flash-lite`) extracted a full trip in one call:
+
+- `name`: "Work trip", `start_time` `2025-02-25T07:00:00Z`, `end_time` `2025-02-27T18:00:00Z`
+- `itinerary_elements`: a LAX→JFK flight (American Airlines, ref `ABCDE`), Avis car rental, transit to the New York Marriott Marquis, the hotel stay, a meeting, and a Liberty Island tour (7 elements)
+- `dependencies`: 6 sequential links between them
+- `valid`: `false` — the preview flagged fields the model could not know: empty `address` on the LAX/JFK locations and empty `booking_reference` on the Avis/Marriott bookings. Filling those in makes the payload confirmable.
+
+This is the intended human-in-the-loop workflow: the model extracts, `TripCreateSerializer` previews validity, and the operator corrects before the trip is written.
+
+Configuration: `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables (read in `travelops/travelops/settings.py`; default model `gemini-3.5-flash-lite`). The extraction schema stays in sync with `TripCreateSerializer` via the `test_extraction_schema_mirrors_trip_create_serializer` drift test.
 
 ---
 

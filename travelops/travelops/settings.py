@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,6 +27,12 @@ SECRET_KEY = "django-insecure-gq$$i4fb20dn$&-ud+jev6cpwn2te6+dt_ci&ngxv_+y7&q_+9
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+
+# Gemini API (trip import from documents)
+# https://ai.google.dev/gemini-api/docs/structured-output
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 # Application definition

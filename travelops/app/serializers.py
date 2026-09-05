@@ -2,6 +2,7 @@ from django.contrib.auth.models import Group, User
 from django.db import transaction
 from rest_framework import serializers
 
+from .gemini_import import MAX_FILE_BYTES, resolve_mime_type
 from .models import (
     Trip,
     Location,
@@ -472,6 +473,37 @@ class DependencyCreateSerializer(serializers.Serializer):
     to_element_index = serializers.IntegerField(min_value=0)
     type = serializers.CharField(max_length=50)
     minimum_buffer = serializers.DurationField()
+
+
+class TripImportSerializer(serializers.Serializer):
+    """Upload form for the document-import extract endpoint.
+
+    Exposed to DRF's browsable API so the page renders a real file input.
+    """
+
+    file = serializers.FileField(write_only=True)
+    model = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+    )
+
+    def validate_file(self, value):
+        if value.size > MAX_FILE_BYTES:
+            raise serializers.ValidationError(
+                f"File exceeds the {MAX_FILE_BYTES} byte limit."
+            )
+        mime_type = resolve_mime_type(
+            getattr(value, "name", ""),
+            getattr(value, "content_type", None),
+        )
+        if mime_type is None:
+            raise serializers.ValidationError(
+                "Unsupported file type. Accepted uploads are images "
+                "(png, jpeg, webp) and PDFs."
+            )
+        value.import_mime_type = mime_type
+        return value
 
 
 class TripCreateSerializer(serializers.ModelSerializer):

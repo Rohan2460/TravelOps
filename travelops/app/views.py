@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
 from django.utils import timezone
@@ -15,12 +16,18 @@ from .models import (
     TripRisk,
 )
 from .analysis import analyze_trip
+from . import gemini_import
+from .gemini_import import (
+    GeminiApiError,
+    GeminiConfigurationError,
+)
 from .serializers import (
     UserSerializer,
     GroupSerializer,
     ReadinessDetailSerializer,
     TripCreateSerializer,
     TripDetailSerializer,
+    TripImportSerializer,
     TripSummarySerializer,
     TripWriteSerializer,
 )
@@ -149,3 +156,73 @@ class TripAnalysisView(APIView):
             )
         analysis = analyze_trip(trip, now=timezone.now())
         return Response(ReadinessDetailSerializer(analysis).data)
+
+
+class TripImportExtractView(generics.GenericAPIView):
+    """
+    Accepts an image/PDF document and returns the Gemini-extracted trip
+    payload (matching the TripCreateSerializer shape) plus a validation
+    preview. Does not write to the database.
+
+    The serializer_class makes the DRF browsable API render a file input
+    form for this endpoint.
+    """
+
+    queryset = Trip.objects.none()
+    serializer_class = TripImportSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file_obj = serializer.validated_data['file']
+        mime_type = file_obj.import_mime_type
+        model = serializer.validated_data.get('model') or None
+
+        try:
+            data, warnings = gemini_import.extract_trip(
+                file_obj.read(),
+                mime_type,
+                filename=getattr(file_obj, "name", "document"),
+                model=model,
+            )
+        except GeminiConfigurationError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except GeminiApiError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        preview = TripCreateSerializer(data=data)
+        valid = preview.is_valid()
+        return Response({
+            "model": model or settings.GEMINI_MODEL,
+            "source_file": {
+                "name": getattr(file_obj, "name", "document"),
+                "mime_type": mime_type,
+            },
+            "extracted": data,
+            "valid": valid,
+            "errors": preview.errors or None,
+            "warnings": warnings,
+        })
+
+
+class TripImportConfirmView(APIView):
+    """
+    Creates a trip from an extracted import payload. Accepts the same JSON
+    body as POST /api/trips/ (TripCreateSerializer shape).
+    """
+
+    def post(self, request):
+        serializer = TripCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        data = TripDetailSerializer(
+            instance,
+            context={"request": request},
+        ).data
+        return Response(data, status=status.HTTP_201_CREATED)
