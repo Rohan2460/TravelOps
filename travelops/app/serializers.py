@@ -443,6 +443,11 @@ class LocationInputField(serializers.Field):
 
 class BookingCreateSerializer(serializers.ModelSerializer):
 
+    booking_reference = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
     class Meta:
         model = Booking
         fields = [
