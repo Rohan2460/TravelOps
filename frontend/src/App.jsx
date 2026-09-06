@@ -4,6 +4,7 @@ import TripList from './components/TripList';
 import TripDetail from './components/TripDetail';
 import TripForm from './components/TripForm';
 import TripAnalysis from './components/TripAnalysis';
+import TripTimeline from './components/TripTimeline';
 import TripImport from './components/TripImport';
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ function App() {
               <Route path="/trips/new" element={<TripForm />} />
               <Route path="/trips/:id" element={<TripDetail />} />
               <Route path="/trips/:id/analysis" element={<TripAnalysis />} />
+              <Route path="/trips/:id/timeline" element={<TripTimeline />} />
               <Route path="/trips/:id/edit" element={<TripForm />} />
               <Route path="/trips/import" element={<TripImport />} />
               <Route path="/" element={<TripList />} />

@@ -316,6 +316,24 @@ class ReadinessDetailSerializer(serializers.Serializer):
         }
 
 
+class RouteAlternativeSerializer(serializers.Serializer):
+    mode = serializers.CharField(read_only=True)
+    distance_km = serializers.FloatField(read_only=True)
+    duration_minutes = serializers.IntegerField(read_only=True)
+    duration_delta_minutes = serializers.IntegerField(read_only=True)
+    departure_at = serializers.DateTimeField(read_only=True)
+    arrival_at = serializers.DateTimeField(read_only=True)
+    via = serializers.ListField(
+        child=serializers.CharField(), read_only=True
+    )
+
+
+class ElementAlternativesSerializer(serializers.Serializer):
+    element_id = serializers.IntegerField(read_only=True)
+    element_name = serializers.CharField(read_only=True)
+    alternatives = RouteAlternativeSerializer(many=True, read_only=True)
+
+
 class ItineraryChangeSerializer(serializers.ModelSerializer):
 
     class Meta:

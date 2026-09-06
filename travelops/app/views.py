@@ -15,9 +15,10 @@ from .models import (
     Trip,
     TripRisk,
 )
-from .analysis import analyze_trip
+from .analysis import TRANSPORT_TYPES, analyze_trip
 from . import gemini_import
 from . import gemini_summary
+from . import routes
 from .gemini_import import (
     GeminiApiError,
     GeminiConfigurationError,
@@ -29,6 +30,7 @@ from .live_analysis import (
 from .serializers import (
     UserSerializer,
     GroupSerializer,
+    ElementAlternativesSerializer,
     ReadinessDetailSerializer,
     FlightStatusCreateSerializer,
     GuidePositionCreateSerializer,
@@ -339,6 +341,66 @@ class TripLiveStatusView(APIView):
             )
         payload = live_status_payload(trip, now=timezone.now())
         return Response(LiveStatusDetailSerializer(payload).data)
+
+
+class TripAlternativesView(APIView):
+    """
+    Google Maps re-routing options for a single transport leg of a trip.
+
+    Read-only and advisory: alternatives cover the leg's two locations only;
+    the rest of the itinerary is untouched and no booking is changed.
+    """
+
+    def get(self, request, pk=None, element_pk=None):
+        trip = _trip_or_404(pk)
+        if trip is None:
+            return Response(
+                {"detail": "Trip not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            element = ItineraryElement.objects.select_related(
+                'start_location', 'end_location'
+            ).get(pk=element_pk)
+        except ItineraryElement.DoesNotExist:
+            return Response(
+                {"detail": "Itinerary element not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if element.trip_id != trip.pk:
+            return Response(
+                {"detail": "itinerary_element does not belong to this trip."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if element.type not in TRANSPORT_TYPES:
+            return Response(
+                {
+                    "detail": (
+                        "Only transport legs (flight, train, road_transfer, "
+                        "ferry) can be re-routed."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            alternatives = routes.element_alternatives(trip, element)
+        except routes.RoutesConfigurationError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except routes.RoutesApiError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        payload = {
+            "element_id": element.pk,
+            "element_name": element.name,
+            "alternatives": alternatives,
+        }
+        return Response(ElementAlternativesSerializer(payload).data)
 
 
 class TripSummaryView(APIView):

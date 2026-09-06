@@ -351,6 +351,7 @@ Computed operational status snapshot from the live analysis engine. Append-only 
 | `/api/trips/<pk>/live/weather/` | POST | `WeatherCreateSerializer` | ingestion JSON (201) | Ingest one weather snapshot + recompute live status |
 | `/api/trips/<pk>/live/gps/` | POST | `GuidePositionCreateSerializer` | ingestion JSON (201) | Ingest one GPS ping + recompute live status |
 | `/api/trips/<pk>/live-status/` | GET | — | `LiveStatusDetailSerializer` | Current operational status (read-only) |
+| `/api/trips/<pk>/alternatives/<element>/` | GET | — | `ElementAlternativesSerializer` | Google Maps re-routing options for one transport leg (read-only) |
 | `/api/trips/<pk>/summary/` | GET | optional `model` query param | `TripSummaryResponseSerializer` (+ model) | On-demand LLM trip summary (read-only) |
 
 ### Trip summary (`TripSummarySerializer`)
@@ -606,6 +607,36 @@ Response shape (`LiveStatusDetailSerializer`):
 | `summary` | counts: `disrupted`, `at_risk`, `valid`, `unknown`, `open_cases`, `affected_bookings` |
 
 `404` for an unknown trip.
+
+---
+
+### Alternative routes — `GET /api/trips/<pk>/alternatives/<element>/`
+
+Google Maps driving/transit re-routing options for a **single** transport leg
+(`flight`, `train`, `road_transfer`, `ferry`) that is disrupted or whose
+connection is infeasible. Only the leg between its `start_location` and
+`end_location` is reconsidered; the rest of the trip is untouched and no
+booking is changed. Backed by the Google Maps Directions API
+(`driving` + `transit` modes), implemented in `travelops/app/routes.py` with
+a 30-minute in-memory cache per `(origin, destination, mode)`.
+
+Configure `GOOGLE_MAPS_API_KEY` in the environment (see `settings.py`).
+
+Response shape (`ElementAlternativesSerializer`):
+
+| Field | Content |
+| --- | --- |
+| `element_id`, `element_name` | identity of the re-routed leg |
+| `alternatives` | one object per travel mode: `mode`, `distance_km`, `duration_minutes`, `duration_delta_minutes` (vs planned duration), `departure_at` (= planned start), `arrival_at` (= departure + duration), `via` (named roads) |
+
+Errors:
+
+| Status | Meaning |
+| --- | --- |
+| `404` | unknown trip or itinerary element |
+| `400` | element belongs to another trip, or is not a transport leg |
+| `503` | `GOOGLE_MAPS_API_KEY` not configured |
+| `502` | upstream Directions API failure |
 
 ---
 

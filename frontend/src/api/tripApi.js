@@ -29,6 +29,18 @@ export const getTripAnalysis = async (id) => {
   return response.data;
 };
 
+export const getTripLiveStatus = async (id) => {
+  const response = await apiClient.get(`/trips/${id}/live-status/`);
+  return response.data;
+};
+
+export const getTripAlternatives = async (id, elementId) => {
+  const response = await apiClient.get(
+    `/trips/${id}/alternatives/${elementId}/`
+  );
+  return response.data;
+};
+
 export const extractTrip = async ({ file, model }) => {
   const formData = new FormData();
   formData.append('file', file);

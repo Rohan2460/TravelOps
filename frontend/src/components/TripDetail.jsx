@@ -347,6 +347,12 @@ export default function TripDetail() {
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
             <Link
+              to={`/trips/${id}/timeline`}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              🗺️ Timeline
+            </Link>
+            <Link
               to={`/trips/${id}/analysis`}
               className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
             >

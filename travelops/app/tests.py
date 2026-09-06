@@ -30,6 +30,8 @@ from .models import (
 )
 from .analysis import analyze_trip
 from .gemini_import import GeminiApiError, GeminiConfigurationError
+from . import routes
+from .routes import RoutesApiError, RoutesConfigurationError
 from .live_analysis import (
     AT_RISK,
     DIRECT,
@@ -1867,6 +1869,211 @@ class LiveIngestApiTests(APITestCase):
     def test_live_status_404_for_missing_trip(self):
         response = self.client.get("/api/trips/99999/live-status/")
         self.assertEqual(response.status_code, 404)
+
+
+FAKE_ROUTE = {
+    "legs": [
+        {
+            "distance": {"value": 18200},
+            "duration": {"value": 3300},
+            "steps": [
+                {
+                    "html_instructions": (
+                        'Head <b>south</b> on <b>NH 66</b>'
+                    )
+                },
+            ],
+        },
+    ],
+}
+
+
+class RouteAlternativesUnitTests(TestCase):
+    def setUp(self):
+        routes.clear_cache()
+        self.now = timezone.now()
+        self.trip, self.airport, self.resort = _active_trip(self.now)
+        self.flight, self.transfer = _live_chain(
+            self.trip, self.now, self.airport, self.resort
+        )
+
+    def tearDown(self):
+        routes.clear_cache()
+
+    def test_element_alternatives_requires_api_key(self):
+        with self.settings(GOOGLE_MAPS_API_KEY=""):
+            with self.assertRaises(RoutesConfigurationError):
+                routes.element_alternatives(self.trip, self.transfer)
+
+    def test_element_alternatives_maps_directions_routes(self):
+        with mock.patch(
+            "app.routes._directions", return_value=[dict(FAKE_ROUTE)]
+        ) as fake_directions, self.settings(
+            GOOGLE_MAPS_API_KEY="test-key"
+        ):
+            alternatives = routes.element_alternatives(
+                self.trip, self.transfer
+            )
+
+        modes = [option["mode"] for option in alternatives]
+        self.assertEqual(modes, ["driving", "transit"])
+        option = alternatives[0]
+        self.assertEqual(option["distance_km"], 18.2)
+        self.assertEqual(option["duration_minutes"], 55)
+        self.assertEqual(option["duration_delta_minutes"], -5)
+        self.assertEqual(option["departure_at"], self.transfer.planned_start)
+        self.assertEqual(
+            option["arrival_at"],
+            self.transfer.planned_start + timedelta(minutes=55),
+        )
+        self.assertEqual(option["via"], ["Head south on NH 66"])
+        self.assertEqual(fake_directions.call_count, 2)  # driving + transit
+
+    def test_element_alternatives_caches_per_mode(self):
+        with mock.patch(
+            "app.routes._directions", return_value=[dict(FAKE_ROUTE)]
+        ) as fake_directions, self.settings(
+            GOOGLE_MAPS_API_KEY="test-key"
+        ):
+            routes.element_alternatives(self.trip, self.transfer)
+            routes.element_alternatives(self.trip, self.transfer)
+
+        self.assertEqual(fake_directions.call_count, 2)
+
+    def test_element_alternatives_rejects_invalid_legs(self):
+        hotel = ItineraryElement.objects.create(
+            trip=self.trip,
+            type="hotel",
+            name="Kovalam Beach Resort",
+            start_location=None,
+            end_location=None,
+            planned_start=self.now,
+            planned_end=self.now + timedelta(days=1),
+            status="valid",
+            sequence=3,
+        )
+        with self.assertRaises(ValueError):
+            routes.element_alternatives(self.trip, hotel)
+
+        no_locations = ItineraryElement.objects.create(
+            trip=self.trip,
+            type="road_transfer",
+            name="Blind Transfer",
+            start_location=None,
+            end_location=None,
+            planned_start=self.now,
+            planned_end=self.now + timedelta(hours=1),
+            status="valid",
+            sequence=4,
+        )
+        with self.assertRaises(ValueError):
+            routes.element_alternatives(self.trip, no_locations)
+
+    def test_element_alternatives_wraps_upstream_error(self):
+        with mock.patch(
+            "app.routes._directions",
+            side_effect=RoutesApiError("directions went boom"),
+        ) as fake_directions, self.settings(
+            GOOGLE_MAPS_API_KEY="test-key"
+        ):
+            with self.assertRaises(RoutesApiError):
+                routes.element_alternatives(self.trip, self.transfer)
+        self.assertEqual(fake_directions.call_count, 1)
+
+
+class TripAlternativesApiTests(APITestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.trip, self.airport, self.resort = _active_trip(self.now)
+        self.flight, self.transfer = _live_chain(
+            self.trip, self.now, self.airport, self.resort
+        )
+        self.url = (
+            f"/api/trips/{self.trip.pk}/alternatives/{self.transfer.pk}/"
+        )
+
+    def test_alternatives_endpoint_shape(self):
+        payload = [
+            {
+                "mode": "driving",
+                "distance_km": 18.2,
+                "duration_minutes": 55,
+                "duration_delta_minutes": -5,
+                "departure_at": self.transfer.planned_start,
+                "arrival_at": self.transfer.planned_start
+                + timedelta(minutes=55),
+                "via": ["Head south on NH 66"],
+            }
+        ]
+        with mock.patch(
+            "app.views.routes.element_alternatives", return_value=payload
+        ):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.data.keys()), {"element_id", "element_name",
+                                        "alternatives"}
+        )
+        self.assertEqual(response.data["alternatives"][0]["mode"], "driving")
+
+    def test_alternatives_404_for_missing_trip(self):
+        response = self.client.get(
+            f"/api/trips/99999/alternatives/{self.transfer.pk}/"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_alternatives_404_for_missing_element(self):
+        response = self.client.get(
+            f"/api/trips/{self.trip.pk}/alternatives/99999/"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_alternatives_rejects_element_from_other_trip(self):
+        other, other_airport, _ = _active_trip(self.now)
+        other_flight, other_transfer = _live_chain(
+            other, self.now, other_airport, self.resort
+        )
+        response = self.client.get(
+            f"/api/trips/{self.trip.pk}/alternatives/{other_transfer.pk}/"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("itinerary_element", response.data["detail"].lower())
+
+    def test_alternatives_rejects_non_transport_element(self):
+        hotel = ItineraryElement.objects.create(
+            trip=self.trip,
+            type="hotel",
+            name="Kovalam Beach Resort",
+            start_location=self.resort,
+            end_location=self.resort,
+            planned_start=self.now + timedelta(days=1),
+            planned_end=self.now + timedelta(days=2),
+            status="valid",
+            sequence=3,
+        )
+        response = self.client.get(
+            f"/api/trips/{self.trip.pk}/alternatives/{hotel.pk}/"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("transport", response.data["detail"].lower())
+
+    def test_alternatives_returns_503_without_api_key(self):
+        with mock.patch(
+            "app.views.routes.element_alternatives",
+            side_effect=RoutesConfigurationError(
+                "GOOGLE_MAPS_API_KEY is not configured in the environment."
+            ),
+        ):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 503)
+
+    def test_alternatives_returns_502_on_upstream_error(self):
+        with mock.patch(
+            "app.views.routes.element_alternatives",
+            side_effect=RoutesApiError("directions went boom"),
+        ):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 502)
 
 
 class TripSummaryUnitTests(TestCase):
