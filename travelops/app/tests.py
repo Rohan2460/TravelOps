@@ -1,4 +1,5 @@
 from datetime import timedelta
+from copy import deepcopy
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1371,6 +1372,22 @@ class TripImportApiTests(APITestCase):
             1,
         )
         self.assertEqual(Location.objects.count(), 4)
+
+    def test_confirm_creates_trip_when_booking_reference_is_blank(self):
+        payload = deepcopy(self.full_payload)
+        payload["itinerary_elements"][0]["bookings"][0]["booking_reference"] = ""
+
+        response = self.client.post(
+            "/api/trips/import/confirm/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        booking = Booking.objects.get(
+            itinerary_element__trip__name="Imported Kerala Trip"
+        )
+        self.assertEqual(booking.booking_reference, "")
 
     def test_confirm_with_invalid_payload_returns_400(self):
         broken = dict(self.full_payload)
