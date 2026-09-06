@@ -13,8 +13,14 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load secrets/first-party keys from the repository root .env file.
+# Existing environment variables take precedence over .env values.
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -34,8 +40,8 @@ ALLOWED_HOSTS = []
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-# Google Maps Directions API (alternative-route suggestions for a trip leg)
-# https://developers.google.com/maps/documentation/directions/get-directions
+# Google Maps Routes API (alternative-route suggestions for a trip leg)
+# https://developers.google.com/maps/documentation/routes
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
 

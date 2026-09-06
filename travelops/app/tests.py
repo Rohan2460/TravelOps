@@ -1874,13 +1874,13 @@ class LiveIngestApiTests(APITestCase):
 FAKE_ROUTE = {
     "legs": [
         {
-            "distance": {"value": 18200},
-            "duration": {"value": 3300},
+            "distanceMeters": 18200,
+            "duration": "3300s",
             "steps": [
                 {
-                    "html_instructions": (
-                        'Head <b>south</b> on <b>NH 66</b>'
-                    )
+                    "navigationInstruction": {
+                        "instructions": "Head south on NH 66"
+                    }
                 },
             ],
         },

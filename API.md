@@ -616,8 +616,8 @@ Google Maps driving/transit re-routing options for a **single** transport leg
 (`flight`, `train`, `road_transfer`, `ferry`) that is disrupted or whose
 connection is infeasible. Only the leg between its `start_location` and
 `end_location` is reconsidered; the rest of the trip is untouched and no
-booking is changed. Backed by the Google Maps Directions API
-(`driving` + `transit` modes), implemented in `travelops/app/routes.py` with
+booking is changed. Backed by the Google Maps Routes API
+(`DRIVE` + `TRANSIT` modes), implemented in `travelops/app/routes.py` with
 a 30-minute in-memory cache per `(origin, destination, mode)`.
 
 Configure `GOOGLE_MAPS_API_KEY` in the environment (see `settings.py`).
@@ -636,7 +636,7 @@ Errors:
 | `404` | unknown trip or itinerary element |
 | `400` | element belongs to another trip, or is not a transport leg |
 | `503` | `GOOGLE_MAPS_API_KEY` not configured |
-| `502` | upstream Directions API failure |
+| `502` | upstream Routes API failure |
 
 ---
 
