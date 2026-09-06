@@ -289,3 +289,203 @@ class TripRisk(models.Model):
 
     def __str__(self):
         return f"{self.trip}: {self.type}"
+
+
+class FlightStatusRecord(models.Model):
+    """Latest flight-status snapshot ingested from a live flight feed."""
+
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        related_name='flight_status_records'
+    )
+    flight_number = models.CharField(max_length=50)
+    date = models.CharField(max_length=20)
+    origin_airport = models.CharField(max_length=50, blank=True)
+    destination_airport = models.CharField(max_length=50, blank=True)
+    scheduled_departure = models.DateTimeField(null=True, blank=True)
+    estimated_departure = models.DateTimeField(null=True, blank=True)
+    scheduled_arrival = models.DateTimeField(null=True, blank=True)
+    estimated_arrival = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=50)
+    gate = models.CharField(max_length=20, blank=True)
+    terminal = models.CharField(max_length=20, blank=True)
+    delay_minutes = models.IntegerField(default=0)
+    delay_reason = models.TextField(blank=True)
+    reported_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-reported_at']
+
+    def __str__(self):
+        return f"{self.flight_number}: {self.status}"
+
+
+class TrainStatusRecord(models.Model):
+    """Latest train-status snapshot ingested from a live train feed."""
+
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        related_name='train_status_records'
+    )
+    train_number = models.CharField(max_length=50)
+    date = models.CharField(max_length=20)
+    origin_station = models.CharField(max_length=255, blank=True)
+    destination_station = models.CharField(max_length=255, blank=True)
+    current_station = models.CharField(max_length=255, blank=True)
+    scheduled_time = models.DateTimeField(null=True, blank=True)
+    estimated_time = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=50)
+    platform = models.CharField(max_length=20, blank=True)
+    delay_minutes = models.IntegerField(default=0)
+    speed_kmh = models.FloatField(default=0.0)
+    reported_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-reported_at']
+
+    def __str__(self):
+        return f"{self.train_number}: {self.status}"
+
+
+class TrafficRouteRecord(models.Model):
+    """Latest traffic / route-condition snapshot for a road transfer."""
+
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        related_name='traffic_route_records'
+    )
+    origin = models.CharField(max_length=255, blank=True)
+    destination = models.CharField(max_length=255, blank=True)
+    departure_time = models.DateTimeField(null=True, blank=True)
+    distance_km = models.FloatField(default=0.0)
+    duration_minutes = models.FloatField(default=0.0)
+    traffic_delay_minutes = models.FloatField(default=0.0)
+    congestion_level = models.CharField(max_length=20)
+    recommended_route = models.CharField(max_length=255, blank=True)
+    incidents = models.JSONField(default=list, blank=True)
+    checked_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-checked_at']
+
+    def __str__(self):
+        return f"{self.itinerary_element}: {self.congestion_level}"
+
+
+class WeatherRecord(models.Model):
+    """Latest weather observation for a location or itinerary element."""
+
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='weather_records'
+    )
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='weather_records'
+    )
+    date_time = models.DateTimeField()
+    condition = models.CharField(max_length=100, blank=True)
+    temperature_c = models.FloatField(null=True, blank=True)
+    temperature_f = models.FloatField(null=True, blank=True)
+    humidity_percent = models.FloatField(default=0.0)
+    wind_speed_kmh = models.FloatField(default=0.0)
+    precipitation_mm = models.FloatField(default=0.0)
+    visibility_km = models.FloatField(default=0.0)
+    warnings = models.JSONField(default=list, blank=True)
+    checked_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-checked_at']
+
+    def __str__(self):
+        return f"{self.condition} @ {self.location or self.itinerary_element}"
+
+
+class GuidePosition(models.Model):
+    """Live GPS position reported by the guide's device during an active trip."""
+
+    trip = models.ForeignKey(
+        Trip,
+        on_delete=models.CASCADE,
+        related_name='guide_positions'
+    )
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='guide_positions'
+    )
+    device_id = models.CharField(max_length=100)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    speed_kmh = models.FloatField(default=0.0)
+    heading_deg = models.FloatField(default=0.0)
+    altitude_m = models.FloatField(default=0.0)
+    captured_at = models.DateTimeField()
+    received_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-captured_at']
+
+    def __str__(self):
+        return f"{self.device_id} @ {self.latitude},{self.longitude}"
+
+
+class NodeStatus(models.Model):
+    """Computed operational status snapshot for an itinerary element.
+
+    Append-only history produced by the live analysis engine. The latest row
+    per (trip, itinerary_element) represents the element's current state.
+    """
+
+    trip = models.ForeignKey(
+        Trip,
+        on_delete=models.CASCADE,
+        related_name='node_statuses'
+    )
+    itinerary_element = models.ForeignKey(
+        ItineraryElement,
+        on_delete=models.CASCADE,
+        related_name='node_statuses'
+    )
+    status = models.CharField(max_length=50)
+    classification = models.CharField(max_length=50)
+    severity = models.CharField(max_length=50)
+    reason = models.TextField(blank=True)
+    source_event = models.ForeignKey(
+        Event,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='node_statuses'
+    )
+    case = models.ForeignKey(
+        Case,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='node_statuses'
+    )
+    calculated_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-calculated_at']
+        indexes = [
+            models.Index(
+                fields=['trip', 'itinerary_element', '-calculated_at'],
+                name='nodestatus_trip_elem_calc_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.itinerary_element}: {self.status} ({self.classification})"

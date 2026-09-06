@@ -12,6 +12,7 @@ from .models import (
     Location,
     ItineraryElement,
     Booking,
+    Dependency,
     Event,
     Impact,
     Case,
@@ -19,9 +20,23 @@ from .models import (
     CaseImpact,
     ReadinessAssessment,
     TripRisk,
+    FlightStatusRecord,
+    TrainStatusRecord,
+    TrafficRouteRecord,
+    WeatherRecord,
+    GuidePosition,
+    NodeStatus,
 )
 from .analysis import analyze_trip
 from .gemini_import import GeminiApiError, GeminiConfigurationError
+from .live_analysis import (
+    AT_RISK,
+    DIRECT,
+    DISRUPTED,
+    DOWNSTREAM,
+    live_status_payload,
+    recompute_live_status,
+)
 
 NON_TRIP_ROUTES = [
     '/api/locations/',
@@ -1384,3 +1399,578 @@ class TripImportApiTests(APITestCase):
         self.assertTrue(Trip.objects.filter(
             name="Imported Kerala Trip"
         ).exists() is False)
+
+
+def _active_trip(now):
+    trip = Trip.objects.create(
+        guide_id=101,
+        name="Live Kerala Trip",
+        start_time=now - timedelta(days=1),
+        end_time=now + timedelta(days=4),
+        status="active",
+    )
+    airport = Location.objects.create(
+        name="Trivandrum Intl Airport (TRV)",
+        latitude=8.4822,
+        longitude=76.9201,
+        address="Chacka, Thiruvananthapuram, Kerala",
+    )
+    resort = Location.objects.create(
+        name="Kovalam Beach Resort",
+        latitude=8.4004,
+        longitude=76.9786,
+        address="Lighthouse Beach, Kovalam, Kerala",
+    )
+    return trip, airport, resort
+
+
+def _live_chain(trip, now, airport, resort, buffer=timedelta(minutes=30)):
+    flight = ItineraryElement.objects.create(
+        trip=trip,
+        type="flight",
+        name="Flight AI-999",
+        start_location=airport,
+        end_location=airport,
+        planned_start=now + timedelta(hours=2),
+        planned_end=now + timedelta(hours=4),
+        status="valid",
+        sequence=1,
+    )
+    transfer = ItineraryElement.objects.create(
+        trip=trip,
+        type="road_transfer",
+        name="Transfer Airport to Resort",
+        start_location=airport,
+        end_location=resort,
+        planned_start=now + timedelta(hours=5),
+        planned_end=now + timedelta(hours=6),
+        status="valid",
+        sequence=2,
+    )
+    Dependency.objects.create(
+        from_element=flight,
+        to_element=transfer,
+        type="transfer",
+        minimum_buffer=buffer,
+    )
+    Booking.objects.create(
+        itinerary_element=flight,
+        supplier_name="Air India",
+        booking_reference="AI-DEL-TRV-4412",
+        status="confirmed",
+    )
+    return flight, transfer
+
+
+class LiveEngineTests(TestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.trip, self.airport, self.resort = _active_trip(self.now)
+        self.flight, self.transfer = _live_chain(
+            self.trip, self.now, self.airport, self.resort
+        )
+
+    def _flight_payload(self, status="DELAYED", minutes=90):
+        flight = self.flight
+        return {
+            "itinerary_element": flight.pk,
+            "flight_number": "AI-999",
+            "date": self.now.date().isoformat(),
+            "origin_airport": "DEL",
+            "destination_airport": "TRV",
+            "scheduled_departure": flight.planned_start.isoformat(),
+            "estimated_departure": (
+                flight.planned_start + timedelta(minutes=minutes)
+            ).isoformat(),
+            "scheduled_arrival": flight.planned_end.isoformat(),
+            "estimated_arrival": (
+                flight.planned_end + timedelta(minutes=minutes)
+            ).isoformat(),
+            "status": status,
+            "gate": "B1",
+            "terminal": "1",
+            "delay_minutes": minutes,
+            "delay_reason": "Air traffic control hold",
+        }
+
+    def _ingest_flight(self, **overrides):
+        data = self._flight_payload()
+        data.pop("itinerary_element", None)
+        data.update(overrides)
+        FlightStatusRecord.objects.create(
+            itinerary_element=self.flight,
+            reported_at=self.now,
+            **data,
+        )
+
+    def test_feed_delay_disrupts_leg_and_marks_connection_at_risk(self):
+        self._ingest_flight()
+        result = recompute_live_status(self.trip, now=self.now)
+        marks = {m["element_id"]: m for m in result["statuses"]}
+
+        flight_mark = marks[self.flight.pk]
+        self.assertEqual(flight_mark["status"], DISRUPTED)
+        self.assertEqual(flight_mark["classification"], DIRECT)
+        self.assertEqual(flight_mark["severity"], "high")
+
+        transfer_mark = marks[self.transfer.pk]
+        self.assertEqual(transfer_mark["status"], AT_RISK)
+        self.assertEqual(transfer_mark["classification"], DOWNSTREAM)
+        self.assertIn("Insufficient connection", transfer_mark["reason"])
+
+        self.assertEqual(result["affected_bookings"], [self.flight.bookings.get().pk])
+        self.assertEqual(
+            FlightStatusRecord.objects.filter(
+                itinerary_element=self.flight
+            ).count(),
+            1,
+        )
+
+    def test_recompute_is_idempotent_for_events_cases_and_actions(self):
+        self._ingest_flight()
+        recompute_live_status(self.trip, now=self.now)
+        recompute_live_status(self.trip, now=self.now)
+
+        self.assertEqual(
+            Event.objects.filter(
+                trip=self.trip, source="flight_status", status="open"
+            ).count(),
+            1,
+        )
+        self.assertEqual(Case.objects.filter(trip=self.trip).count(), 1)
+        self.assertEqual(
+            NodeStatus.objects.filter(trip=self.trip).count(),
+            4,
+        )
+        self.assertEqual(
+            FlightStatusRecord.objects.filter(
+                itinerary_element=self.flight
+            ).count(),
+            1,
+        )
+        case = Case.objects.get(trip=self.trip)
+        self.assertGreaterEqual(case.actions.count(), 4)
+        actions = case.actions.values_list("type", flat=True)
+        self.assertIn("contact_supplier", actions)
+        self.assertIn("monitor", actions)
+        self.assertIn("leave_earlier", actions)
+        self.assertIn("alternate_route", actions)
+
+    def test_cancelled_flight_recommends_change_transportation(self):
+        self._ingest_flight(status="CANCELLED")
+        recompute_live_status(self.trip, now=self.now)
+        case = Case.objects.get(trip=self.trip)
+        self.assertIn(
+            "change_transportation",
+            case.actions.values_list("type", flat=True),
+        )
+        node = live_status_payload(self.trip, now=self.now)
+        flight_node = next(
+            n for n in node["nodes"] if n["element_id"] == self.flight.pk
+        )
+        self.assertEqual(flight_node["status"], DISRUPTED)
+
+    def test_traffic_advisory_marks_direct_at_risk(self):
+        TrafficRouteRecord.objects.create(
+            itinerary_element=self.transfer,
+            origin="TRV",
+            destination="Kovalam",
+            congestion_level="MODERATE",
+            traffic_delay_minutes=15,
+            duration_minutes=60,
+            checked_at=self.now,
+        )
+        recompute_live_status(self.trip, now=self.now)
+        payload = live_status_payload(self.trip, now=self.now)
+        transfer_node = next(
+            n for n in payload["nodes"]
+            if n["element_id"] == self.transfer.pk
+        )
+        self.assertEqual(transfer_node["status"], AT_RISK)
+        self.assertEqual(transfer_node["classification"], DIRECT)
+        self.assertEqual(transfer_node["severity"], "low")
+
+    def test_weather_watch_marks_direct_at_risk_with_reason(self):
+        WeatherRecord.objects.create(
+            itinerary_element=self.transfer,
+            location=self.resort,
+            date_time=self.now,
+            condition="Heavy Showers",
+            warnings=["Torrential rain advisory"],
+            checked_at=self.now,
+        )
+        recompute_live_status(self.trip, now=self.now)
+        payload = live_status_payload(self.trip, now=self.now)
+        transfer_node = next(
+            n for n in payload["nodes"]
+            if n["element_id"] == self.transfer.pk
+        )
+        self.assertEqual(transfer_node["status"], AT_RISK)
+        self.assertEqual(transfer_node["classification"], DIRECT)
+        self.assertEqual(transfer_node["severity"], "high")
+        self.assertIn("Weather advisory", transfer_node["reason"])
+
+    def test_healthy_trip_marks_elements_valid(self):
+        payload = live_status_payload(self.trip, now=self.now)
+        statuses = {n["element_id"]: n["status"] for n in payload["nodes"]}
+        self.assertEqual(statuses[self.flight.pk], "valid")
+        self.assertEqual(statuses[self.transfer.pk], "valid")
+        self.assertEqual(payload["summary"]["disrupted"], 0)
+        self.assertEqual(payload["summary"]["at_risk"], 0)
+        self.assertEqual(payload["summary"]["valid"], 2)
+
+    def test_live_status_payload_is_read_only(self):
+        before_nodes = NodeStatus.objects.count()
+        before_events = Event.objects.count()
+        live_status_payload(self.trip, now=self.now)
+        self.assertEqual(NodeStatus.objects.count(), before_nodes)
+        self.assertEqual(Event.objects.count(), before_events)
+
+    def test_gps_feed_appears_in_payload(self):
+        GuidePosition.objects.create(
+            trip=self.trip,
+            itinerary_element=self.flight,
+            device_id="device-1",
+            latitude=8.4822,
+            longitude=76.9201,
+            captured_at=self.now,
+            received_at=self.now,
+        )
+        payload = live_status_payload(self.trip, now=self.now)
+        self.assertEqual(payload["feeds"]["gps"]["device_id"], "device-1")
+        self.assertEqual(
+            payload["feeds"]["gps"]["itinerary_element_id"], self.flight.pk
+        )
+
+
+class LiveIngestApiTests(APITestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.trip, self.airport, self.resort = _active_trip(self.now)
+        self.flight, self.transfer = _live_chain(
+            self.trip, self.now, self.airport, self.resort
+        )
+
+    def _iso(self, value):
+        return value.isoformat()
+
+    def test_flight_status_ingestion_returns_statuses(self):
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/flight-status/",
+            {
+                "itinerary_element": self.flight.pk,
+                "flight_number": "AI-999",
+                "date": self.now.date().isoformat(),
+                "status": "DELAYED",
+                "scheduled_departure": self._iso(self.flight.planned_start),
+                "estimated_departure": self._iso(
+                    self.flight.planned_start + timedelta(minutes=90)
+                ),
+                "scheduled_arrival": self._iso(self.flight.planned_end),
+                "estimated_arrival": self._iso(
+                    self.flight.planned_end + timedelta(minutes=90)
+                ),
+                "delay_minutes": 90,
+                "delay_reason": "Air traffic control hold",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["element_id"], self.flight.pk)
+        self.assertEqual(response.data["phase"], "ACTIVE")
+        marks = {m["element_id"]: m for m in response.data["statuses"]}
+        self.assertEqual(marks[self.flight.pk]["status"], DISRUPTED)
+        self.assertEqual(marks[self.flight.pk]["classification"], DIRECT)
+        self.assertEqual(marks[self.transfer.pk]["status"], AT_RISK)
+        self.assertEqual(marks[self.transfer.pk]["classification"], DOWNSTREAM)
+        self.assertEqual(
+            response.data["affected_bookings"],
+            [self.flight.bookings.get().pk],
+        )
+
+    def test_flight_ingestion_rejects_element_from_other_trip(self):
+        other, other_airport, _ = _active_trip(self.now)
+        other_flight, _ = _live_chain(
+            other, self.now, other_airport, self.resort
+        )
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/flight-status/",
+            {
+                "itinerary_element": other_flight.pk,
+                "flight_number": "AI-999",
+                "date": self.now.date().isoformat(),
+                "status": "ON_TIME",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("itinerary_element", response.data["detail"].lower())
+
+    def test_train_status_ingestion(self):
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/train-status/",
+            {
+                "itinerary_element": self.flight.pk,
+                "train_number": "ICE-502",
+                "date": self.now.date().isoformat(),
+                "origin_station": "Berlin Hbf",
+                "destination_station": "Munich Hbf",
+                "status": "DELAYED",
+                "scheduled_time": self._iso(self.flight.planned_start),
+                "estimated_time": self._iso(
+                    self.flight.planned_start + timedelta(minutes=30)
+                ),
+                "delay_minutes": 30,
+                "platform": "3",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            TrainStatusRecord.objects.filter(
+                itinerary_element=self.flight
+            ).count(),
+            1,
+        )
+
+    def test_traffic_ingestion(self):
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/traffic/",
+            {
+                "itinerary_element": self.transfer.pk,
+                "origin": "TRV",
+                "destination": "Kovalam",
+                "departure_time": self._iso(self.transfer.planned_start),
+                "distance_km": 15.0,
+                "duration_minutes": 60,
+                "traffic_delay_minutes": 15,
+                "congestion_level": "MODERATE",
+                "recommended_route": "Scenic Bypass",
+                "incidents": [{"incident_type": "congestion", "description": "x"}],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            TrafficRouteRecord.objects.filter(
+                itinerary_element=self.transfer
+            ).count(),
+            1,
+        )
+        marks = {m["element_id"]: m for m in response.data["statuses"]}
+        self.assertEqual(marks[self.transfer.pk]["status"], AT_RISK)
+        self.assertEqual(marks[self.transfer.pk]["classification"], DIRECT)
+
+    def test_weather_ingestion(self):
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/weather/",
+            {
+                "itinerary_element": self.transfer.pk,
+                "date_time": self._iso(self.now),
+                "condition": "Thunderstorm",
+                "temperature_c": 26.0,
+                "humidity_percent": 80.0,
+                "wind_speed_kmh": 40.0,
+                "precipitation_mm": 20.0,
+                "visibility_km": 3.0,
+                "warnings": ["Torrential rain advisory"],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            WeatherRecord.objects.filter(
+                itinerary_element=self.transfer
+            ).count(),
+            1,
+        )
+        marks = {m["element_id"]: m for m in response.data["statuses"]}
+        self.assertEqual(marks[self.transfer.pk]["status"], AT_RISK)
+        self.assertEqual(marks[self.transfer.pk]["classification"], DIRECT)
+
+    def test_gps_ingestion(self):
+        response = self.client.post(
+            f"/api/trips/{self.trip.pk}/live/gps/",
+            {
+                "itinerary_element": self.flight.pk,
+                "device_id": "device-1",
+                "latitude": 8.4822,
+                "longitude": 76.9201,
+                "speed_kmh": 54.0,
+                "captured_at": self._iso(self.now),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            GuidePosition.objects.filter(trip=self.trip).count(), 1
+        )
+
+    def test_ingestion_404_for_missing_trip(self):
+        response = self.client.post(
+            "/api/trips/99999/live/flight-status/",
+            {"itinerary_element": self.flight.pk, "status": "ON_TIME"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_live_status_endpoint_shape(self):
+        self.client.post(
+            f"/api/trips/{self.trip.pk}/live/flight-status/",
+            {
+                "itinerary_element": self.flight.pk,
+                "flight_number": "AI-999",
+                "date": self.now.date().isoformat(),
+                "status": "DELAYED",
+                "delay_minutes": 90,
+                "scheduled_departure": self._iso(self.flight.planned_start),
+                "scheduled_arrival": self._iso(self.flight.planned_end),
+            },
+            format="json",
+        )
+        response = self.client.get(
+            f"/api/trips/{self.trip.pk}/live-status/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                "trip_id", "name", "phase", "generated_at", "nodes",
+                "feeds", "cases", "recommended_actions", "summary",
+            },
+        )
+        by_element = {n["element_id"]: n for n in response.data["nodes"]}
+        self.assertEqual(by_element[self.flight.pk]["status"], DISRUPTED)
+        self.assertEqual(by_element[self.transfer.pk]["status"], AT_RISK)
+        self.assertEqual(
+            response.data["summary"]["affected_bookings"], 1
+        )
+        self.assertEqual(response.data["feeds"]["gps"], None)
+
+    def test_live_status_404_for_missing_trip(self):
+        response = self.client.get("/api/trips/99999/live-status/")
+        self.assertEqual(response.status_code, 404)
+
+
+class TripSummaryUnitTests(TestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.trip, self.airport, self.resort = _active_trip(self.now)
+        self.flight, self.transfer = _live_chain(
+            self.trip, self.now, self.airport, self.resort
+        )
+
+    def test_summarize_trip_uses_structured_output_schema(self):
+        from . import gemini_summary as gs
+
+        fake_response = mock.Mock()
+        fake_response.parsed = gs.TripSummaryResult(
+            headline="No disruption.",
+            phase="ACTIVE",
+            overall_assessment="READY",
+            summary="The trip is on plan.",
+            affected_nodes=[],
+            recommended_actions=[],
+            risks=[],
+        )
+
+        with mock.patch("app.gemini_summary.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.return_value = fake_response
+
+            result = gs.summarize_trip(self.trip, now=self.now)
+
+        call = fake_client.models.generate_content.call_args
+        self.assertEqual(call.kwargs["model"], settings.GEMINI_MODEL)
+        config = call.kwargs["config"]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertIs(config.response_schema, gs.TripSummaryResult)
+        self.assertIn("LIVE STATUS", call.kwargs["contents"][0].text)
+        self.assertEqual(result["overall_assessment"], "READY")
+
+    def test_summarize_trip_raises_when_api_key_missing(self):
+        from . import gemini_summary as gs
+
+        with self.settings(GEMINI_API_KEY=""):
+            with self.assertRaises(gs.GeminiConfigurationError):
+                gs.summarize_trip(self.trip, now=self.now)
+
+    def test_summarize_trip_raises_when_parsed_output_missing(self):
+        from . import gemini_summary as gs
+
+        fake_response = mock.Mock()
+        fake_response.parsed = None
+        with mock.patch("app.gemini_summary.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.return_value = fake_response
+            with self.assertRaises(gs.GeminiApiError):
+                gs.summarize_trip(self.trip, now=self.now)
+
+    def test_summarize_trip_wraps_gemini_errors(self):
+        from . import gemini_summary as gs
+
+        with mock.patch("app.gemini_summary.genai") as fake_genai, \
+                self.settings(GEMINI_API_KEY="test-key"):
+            fake_client = fake_genai.Client.return_value
+            fake_client.models.generate_content.side_effect = \
+                RuntimeError("upstream boom")
+            with self.assertRaises(gs.GeminiApiError):
+                gs.summarize_trip(self.trip, now=self.now)
+
+
+class TripSummaryApiTests(APITestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.trip, _, _ = _active_trip(self.now)
+
+    def test_summary_endpoint_without_api_key_returns_503(self):
+        with mock.patch(
+            "app.views.gemini_summary.summarize_trip",
+            side_effect=GeminiConfigurationError(
+                "GEMINI_API_KEY is not configured in the environment."
+            ),
+        ):
+            response = self.client.get(
+                f"/api/trips/{self.trip.pk}/summary/"
+            )
+        self.assertEqual(response.status_code, 503)
+
+    def test_summary_endpoint_returns_structured_result(self):
+        summary_payload = {
+            "headline": "Smooth sailing.",
+            "phase": "ACTIVE",
+            "overall_assessment": "READY",
+            "summary": "All legs are on plan.",
+            "affected_nodes": [],
+            "recommended_actions": [],
+            "risks": [],
+        }
+        with mock.patch(
+            "app.views.gemini_summary.summarize_trip",
+            return_value=dict(summary_payload),
+        ):
+            response = self.client.get(
+                f"/api/trips/{self.trip.pk}/summary/"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["model"], settings.GEMINI_MODEL)
+        self.assertEqual(
+            response.data["result"]["overall_assessment"], "READY"
+        )
+
+    def test_summary_endpoint_maps_upstream_error_to_502(self):
+        with mock.patch(
+            "app.views.gemini_summary.summarize_trip",
+            side_effect=GeminiApiError("upstream boom"),
+        ):
+            response = self.client.get(
+                f"/api/trips/{self.trip.pk}/summary/"
+            )
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("upstream boom", response.data["detail"])
+
+    def test_summary_endpoint_404_for_missing_trip(self):
+        response = self.client.get("/api/trips/99999/summary/")
+        self.assertEqual(response.status_code, 404)

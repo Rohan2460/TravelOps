@@ -17,19 +17,31 @@ from .models import (
 )
 from .analysis import analyze_trip
 from . import gemini_import
+from . import gemini_summary
 from .gemini_import import (
     GeminiApiError,
     GeminiConfigurationError,
+)
+from .live_analysis import (
+    live_status_payload,
+    recompute_live_status,
 )
 from .serializers import (
     UserSerializer,
     GroupSerializer,
     ReadinessDetailSerializer,
+    FlightStatusCreateSerializer,
+    GuidePositionCreateSerializer,
+    LiveStatusDetailSerializer,
+    TrafficRouteCreateSerializer,
+    TrainStatusCreateSerializer,
     TripCreateSerializer,
     TripDetailSerializer,
     TripImportSerializer,
+    TripSummaryResponseSerializer,
     TripSummarySerializer,
     TripWriteSerializer,
+    WeatherCreateSerializer,
 )
 
 
@@ -226,3 +238,143 @@ class TripImportConfirmView(APIView):
             context={"request": request},
         ).data
         return Response(data, status=status.HTTP_201_CREATED)
+
+
+def _trip_or_404(pk):
+    try:
+        return trip_detail_queryset().get(pk=pk)
+    except Trip.DoesNotExist:
+        return None
+
+
+class LiveFeedIngestMixin:
+    """Shared POST behaviour for the live feed ingestion endpoints.
+
+    Validates the payload, confirms the ``itinerary_element`` belongs to the
+    trip in the URL, persists the snapshot record, then recomputes the live
+    status and returns the resulting node statuses.
+    """
+
+    serializer_class = None
+    requires_trip = False
+
+    def post(self, request, pk=None):
+        trip = _trip_or_404(pk)
+        if trip is None:
+            return Response(
+                {"detail": "Trip not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        element = serializer.validated_data.get("itinerary_element")
+        if element is not None and element.trip_id != trip.pk:
+            return Response(
+                {
+                    "detail": "itinerary_element does not belong to this trip."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        save_kwargs = {"trip": trip} if self.requires_trip else {}
+        record = serializer.save(**save_kwargs)
+        result = recompute_live_status(trip)
+        return Response(
+            {
+                "element_id": record.itinerary_element_id,
+                "received": self.get_serializer(record).data,
+                "statuses": result["statuses"],
+                "case_id": result["case_id"],
+                "phase": result["phase"],
+                "affected_bookings": result["affected_bookings"],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class TripFlightStatusIngestView(LiveFeedIngestMixin, generics.GenericAPIView):
+    """POST a flight-status snapshot for one of the trip's flight legs."""
+
+    serializer_class = FlightStatusCreateSerializer
+
+
+class TripTrainStatusIngestView(LiveFeedIngestMixin, generics.GenericAPIView):
+    """POST a train-status snapshot for one of the trip's train legs."""
+
+    serializer_class = TrainStatusCreateSerializer
+
+
+class TripTrafficIngestView(LiveFeedIngestMixin, generics.GenericAPIView):
+    """POST a traffic/route snapshot for a road transfer or ferry."""
+
+    serializer_class = TrafficRouteCreateSerializer
+
+
+class TripWeatherIngestView(LiveFeedIngestMixin, generics.GenericAPIView):
+    """POST a weather snapshot for one of the trip's locations."""
+
+    serializer_class = WeatherCreateSerializer
+
+
+class TripGpsIngestView(LiveFeedIngestMixin, generics.GenericAPIView):
+    """POST a guide GPS position ping during an active trip."""
+
+    serializer_class = GuidePositionCreateSerializer
+    requires_trip = True
+
+
+class TripLiveStatusView(APIView):
+    """
+    Returns the current live operational status for a trip.
+
+    Read-only view of the deterministic live engine; it does not write to
+    the database.
+    """
+
+    def get(self, request, pk=None):
+        trip = _trip_or_404(pk)
+        if trip is None:
+            return Response(
+                {"detail": "Trip not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        payload = live_status_payload(trip, now=timezone.now())
+        return Response(LiveStatusDetailSerializer(payload).data)
+
+
+class TripSummaryView(APIView):
+    """
+    On-demand LLM summary of a trip's readiness and live operational status.
+
+    Computed from the deterministic analysis and live snapshot; never writes
+    to the database.
+    """
+
+    def get(self, request, pk=None):
+        trip = _trip_or_404(pk)
+        if trip is None:
+            return Response(
+                {"detail": "Trip not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            data = gemini_summary.summarize_trip(
+                trip,
+                now=timezone.now(),
+                model=request.GET.get("model") or None,
+            )
+        except GeminiConfigurationError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except GeminiApiError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response(
+            {
+                "model": request.GET.get("model") or settings.GEMINI_MODEL,
+                "result": TripSummaryResponseSerializer(data).data,
+            }
+        )

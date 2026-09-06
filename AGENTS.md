@@ -28,6 +28,18 @@ The dependency manifest is `requirements.txt` at the repository root. Install it
 - Use Django migrations for schema changes. The SQLite database is checked in, so avoid manual schema edits and be deliberate about database-file changes.
 - Keep disruption analysis deterministic and explainable. Recommendations assist a human operator; do not silently automate booking changes or cancellations.
 - The generated settings use development-only values (`DEBUG = True`, hardcoded secret key, empty `ALLOWED_HOSTS`). Do not treat them as production configuration.
+- Live feed ingestion is implemented in the backend with POST-only endpoints; the FastAPI simulator in `API/` is a separate port-8000 app used for reference payloads and needs no frontend/UI wiring.
+
+## Live trip analysis details
+
+- Live status lives in `travelops/app/live_analysis.py`. `recompute_live_status(trip, now, created_by)` runs the engine and writes artifacts; `live_status_payload(trip, now)` is the read-only view (used by the live-status endpoint and the LLM summary context). Both are deterministic and reference-time dependent.
+- Routes: `POST /api/trips/<pk>/live/{flight-status|train-status|traffic|weather|gps}/` (ingestion views in `travelops/app/views.py`), `GET /api/trips/<pk>/live-status/` (`LiveStatusView`), `GET /api/trips/<pk>/summary/` (`TripSummaryView`). Payloads mirror the FastAPI simulator shapes but require a `itinerary_element` FK that must belong to the trip in the URL (else 400).
+- Feed records (`FlightStatusRecord`, `TrainStatusRecord`, `TrafficRouteRecord`, `WeatherRecord`, `GuidePosition`) are append-only; the latest record per element is authoritative. `NodeStatus` is append-only per `(trip, element)` with a `calculated_at` index; the latest row is the current state.
+- Status vocabulary: `valid` / `at_risk` / `disrupted` / `unknown`; classification `direct` / `downstream` / `unaffected`; severity `low`/`medium`/`high`/`critical`; every mark carries an explicit `reason`.
+- Feed-derived roots come from the latest feed records first (authoritative). Open events with a direct-disrupted impact act as a fallback root source; do not let at-risk weather advisories become roots.
+- Written artifacts are idempotent across re-posts: events dedup on `(source, title, open-status)`, one open Case per trip is reused, impacts/actions `update_or_create`. Re-posting the same state grows only `NodeStatus` and feed history, not event/case/action counts.
+- The engine never writes to `ItineraryElement`, `Booking`, or `ReadinessAssessment`. Recommendations assist a human; no silent booking changes or cancellations.
+- The LLM summary (`travelops/app/gemini_summary.py`, `summarize_trip`) is on-demand, uses pydantic `TripSummaryResult` (schema drift-tested against `TripSummaryResponseSerializer`), and errors as `503` (no API key) / `502` (upstream failure), mirroring `gemini_import.py`.
 
 ## Trip analysis (readiness) details
 

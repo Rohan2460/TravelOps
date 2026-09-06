@@ -43,7 +43,7 @@ python manage.py runserver   # http://127.0.0.1:8000/
 | `end_time` | datetime | |
 | `status` | string | free-form: `upcoming` / `active` / `completed` in fixtures |
 
-Reverse relations: `itinerary_elements`, `events`, `cases`, `trip_risks`, `readiness_assessments`, `itinerary_changes`.
+Reverse relations: `itinerary_elements`, `events`, `cases`, `trip_risks`, `readiness_assessments`, `itinerary_changes`, `guide_positions`, `node_statuses`.
 
 ### Location
 
@@ -76,7 +76,7 @@ A single leg of a trip (flight, train, road transfer, ferry, hotel, activity, ..
 | `status` | string | e.g. `valid`, `at_risk`, `disrupted`, `completed` |
 | `sequence` | int | ordering within the trip |
 
-Reverse relations: `bookings`, `outgoing_dependencies`, `incoming_dependencies`, `impacts`, `changes`.
+Reverse relations: `bookings`, `outgoing_dependencies`, `incoming_dependencies`, `impacts`, `changes`, `flight_status_records`, `train_status_records`, `traffic_route_records`, `weather_records`, `guide_positions`, `node_statuses`.
 
 ### Booking
 
@@ -232,6 +232,91 @@ Stored readiness snapshot (used for the trip **overview** label only).
 | `status` | string | `open`, `resolved`, ... |
 | `created_at` / `updated_at` | datetime | auto |
 
+### FlightStatusRecord
+
+Latest flight-status snapshot ingested from a live flight feed. Append-only history per element (ordered by `reported_at` descending).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | PK | |
+| `itinerary_element` | FK → ItineraryElement | `related_name='flight_status_records'` |
+| `flight_number`, `date` | string | feed identifiers |
+| `origin_airport`, `destination_airport` | string | IATA codes |
+| `scheduled_departure` / `estimated_departure` | datetime | nullable |
+| `scheduled_arrival` / `estimated_arrival` | datetime | nullable |
+| `status` | string | e.g. `ON_TIME`, `DELAYED`, `CANCELLED` (case-insensitive matching) |
+| `gate`, `terminal` | string | blank allowed |
+| `delay_minutes` | int | default 0 |
+| `delay_reason` | text | blank allowed |
+| `reported_at` | datetime | feed report time |
+
+### TrainStatusRecord
+
+Latest train-status snapshot ingested from a live train feed (`related_name='train_status_records'`). Statuses like `RUNNING`, `ON_TIME`, `DELAYED`, `STOPPED`, `CANCELLED`. Fields mirror `FlightStatusRecord` (`train_number`, `origin_station`, `destination_station`, `current_station`, `scheduled_time`, `estimated_time`, `platform`, `speed_kmh`) and are ordered by `reported_at` descending.
+
+### TrafficRouteRecord
+
+Latest traffic / route-condition snapshot for a road transfer or ferry (`related_name='traffic_route_records'`).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | PK | |
+| `itinerary_element` | FK → ItineraryElement | |
+| `origin`, `destination` | string | |
+| `departure_time` | datetime | nullable |
+| `distance_km` | float | |
+| `duration_minutes` | float | includes delay |
+| `traffic_delay_minutes` | float | extra delay from traffic |
+| `congestion_level` | string | `LOW` / `MODERATE` / `HEAVY` / `SEVERE` (case-insensitive matching) |
+| `recommended_route` | string | blank allowed |
+| `incidents` | JSON | list of `{incident_type, description, delay_contribution_mins}` |
+| `checked_at` | datetime | ordered descending |
+
+### WeatherRecord
+
+Latest weather observation for a location or itinerary element (`related_name='weather_records'`).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | PK | |
+| `itinerary_element` | FK → ItineraryElement | nullable |
+| `location` | FK → Location | nullable |
+| `date_time`, `checked_at` | datetime | |
+| `condition` | string | e.g. `Clear`, `Thunderstorm`, `Monsoon Showers` |
+| `temperature_c`, `temperature_f` | float | nullable |
+| `humidity_percent`, `wind_speed_kmh`, `precipitation_mm`, `visibility_km` | float | |
+| `warnings` | JSON | list of advisory strings |
+
+### GuidePosition
+
+Live GPS position reported by the guide's device (`trip` FK → Trip, `related_name='guide_positions'`; optional `itinerary_element`, `related_name='guide_positions'`).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | PK | |
+| `trip`, `itinerary_element` | FK | element nullable |
+| `device_id` | string | |
+| `latitude`, `longitude` | float | |
+| `speed_kmh`, `heading_deg`, `altitude_m` | float | |
+| `captured_at`, `received_at` | datetime | ordered by `captured_at` descending |
+
+### NodeStatus
+
+Computed operational status snapshot from the live analysis engine. Append-only history; the **latest** row per `(trip, itinerary_element)` is the element's current state (index `nodestatus_trip_elem_calc_idx`, ordered by `calculated_at` descending).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | PK | |
+| `trip` | FK → Trip | `related_name='node_statuses'` |
+| `itinerary_element` | FK → ItineraryElement | `related_name='node_statuses'` |
+| `status` | string | `valid` / `at_risk` / `disrupted` / `unknown` |
+| `classification` | string | `direct` / `downstream` / `unaffected` |
+| `severity` | string | `low` / `medium` / `high` / `critical` |
+| `reason` | text | explicit, explainable reason |
+| `source_event` | FK → Event | nullable, feed event that drove the mark |
+| `case` | FK → Case | nullable |
+| `calculated_at` | datetime | |
+
 ---
 
 ## API endpoints
@@ -260,6 +345,13 @@ Stored readiness snapshot (used for the trip **overview** label only).
 | `/api/trips/<pk>/analysis/` | GET | — | `ReadinessDetailSerializer` | Computed live analysis (upcoming or active) |
 | `/api/trips/import/extract/` | POST | multipart `file` (+ optional `model`) | extraction JSON | Send image/PDF to Gemini, get trip JSON + validation preview (no DB write) |
 | `/api/trips/import/confirm/` | POST | `TripCreateSerializer` | `TripDetailSerializer` (201) | Create a trip from an extracted payload |
+| `/api/trips/<pk>/live/flight-status/` | POST | `FlightStatusCreateSerializer` | ingestion JSON (201) | Ingest one flight-status snapshot + recompute live status |
+| `/api/trips/<pk>/live/train-status/` | POST | `TrainStatusCreateSerializer` | ingestion JSON (201) | Ingest one train-status snapshot + recompute live status |
+| `/api/trips/<pk>/live/traffic/` | POST | `TrafficRouteCreateSerializer` | ingestion JSON (201) | Ingest one traffic/route snapshot + recompute live status |
+| `/api/trips/<pk>/live/weather/` | POST | `WeatherCreateSerializer` | ingestion JSON (201) | Ingest one weather snapshot + recompute live status |
+| `/api/trips/<pk>/live/gps/` | POST | `GuidePositionCreateSerializer` | ingestion JSON (201) | Ingest one GPS ping + recompute live status |
+| `/api/trips/<pk>/live-status/` | GET | — | `LiveStatusDetailSerializer` | Current operational status (read-only) |
+| `/api/trips/<pk>/summary/` | GET | optional `model` query param | `TripSummaryResponseSerializer` (+ model) | On-demand LLM trip summary (read-only) |
 
 ### Trip summary (`TripSummarySerializer`)
 
@@ -408,6 +500,143 @@ Testing the flow with `eg1.png` (a trip-confirmation email screenshot, `gemini-3
 This is the intended human-in-the-loop workflow: the model extracts, `TripCreateSerializer` previews validity, and the operator corrects before the trip is written.
 
 Configuration: `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables (read in `travelops/travelops/settings.py`; default model `gemini-3.5-flash-lite`). The extraction schema stays in sync with `TripCreateSerializer` via the `test_extraction_schema_mirrors_trip_create_serializer` drift test.
+
+---
+
+## Live trip analysis — ingestion + live status
+
+The live engine (`travelops/app/live_analysis.py`) continuously maintains the current operational status of an active trip. It is deterministic and explainable, and it **never** applies booking or itinerary changes automatically — recommendations assist a human operator.
+
+### Pipe model
+
+1. External feeds (flight status, train status, traffic routes, weather, GPS) POST snapshots to the ingestion endpoints. Each record is stored append-only; the latest record per element is authoritative.
+2. `recompute_live_status(trip, now, created_by)` derives marks for every itinerary element, persists them as `NodeStatus` rows (append-only history), creates/updates feed-driven `Event`s and an operational `Case`, mirrors direct/downstream marks into `Impact`/`CaseImpact`, and writes recommended `CaseAction` rows.
+3. `live_status_payload(trip, now)` is the read-only view used by `GET /api/trips/<pk>/live-status/` and as the context for the LLM summary. It never writes to the database.
+
+### Ingestion payloads
+
+Every ingestion POST requires an `itinerary_element` (the element the snapshot describes); the engine rejects elements that do not belong to the trip in the URL with `400`. Timestamps default to the server clock when omitted.
+
+`POST /api/trips/<pk>/live/flight-status/`:
+
+```json
+{
+  "itinerary_element": 100,
+  "flight_number": "AI-1049",
+  "date": "2026-09-04",
+  "origin_airport": "DEL",
+  "destination_airport": "TRV",
+  "scheduled_departure": "2026-09-04T00:30:00Z",
+  "estimated_departure": "2026-09-04T02:35:00Z",
+  "scheduled_arrival": "2026-09-04T04:00:00Z",
+  "estimated_arrival": "2026-09-04T06:05:00Z",
+  "status": "DELAYED",
+  "gate": "B27",
+  "terminal": "3",
+  "delay_minutes": 125,
+  "delay_reason": "Technical snag resolved.",
+  "reported_at": "2026-09-04T03:10:00Z"
+}
+```
+
+`POST /api/trips/<pk>/live/train-status/` mirrors the simulator shape (`train_number`, `date`, `origin_station`, `destination_station`, `current_station`, `scheduled_time`, `estimated_time`, `status`, `platform`, `delay_minutes`, `speed_kmh`).
+
+`POST /api/trips/<pk>/live/traffic/` mirrors the simulator shape (`origin`, `destination`, `departure_time`, `distance_km`, `duration_minutes`, `traffic_delay_minutes`, `congestion_level`, `recommended_route`, `incidents`).
+
+`POST /api/trips/<pk>/live/weather/` mirrors the simulator shape (`date_time`, `condition`, `temperature_c`, `temperature_f`, `humidity_percent`, `wind_speed_kmh`, `precipitation_mm`, `visibility_km`, `warnings`).
+
+`POST /api/trips/<pk>/live/gps/` mirrors the simulator ping (`device_id`, `latitude`, `longitude`, `captured_at`, `speed_kmh`, `heading_deg`, `altitude_m`).
+
+Ingestion response (201):
+
+```json
+{
+  "element_id": 100,
+  "received": { "...": "the stored record" },
+  "statuses": [
+    { "element_id": 100, "status": "disrupted", "classification": "direct", "severity": "high", "reason": "Flight AI-1049 status DELAYED..." }
+  ],
+  "case_id": 100,
+  "phase": "ACTIVE",
+  "affected_bookings": [100, 101]
+}
+```
+
+### Mark derivation (`_compute_marks`)
+
+Per element, in order: feed-driven roots first, then advisories/watches, then missed-departure / check-in / connection rules:
+
+| Condition | status | classification |
+| --- | --- | --- |
+| Flight `DELAYED`/`CANCELLED`/`DIVERTED`, train `DELAYED`/`CANCELLED`, road/ferry traffic `HEAVY`/`SEVERE` with delay > 0 | `disrupted` | `direct` |
+| Weather advisory (warnings or condition present); traffic delay > 0 but not heavy/severe | `at_risk` | `direct` |
+| Transport element past its `planned_start` without `actual_start` | `disrupted` | `direct` or `downstream` |
+| Hotel arrival after check-in (deadline unsatisfied) | `disrupted` | `direct` or `downstream` |
+| Incoming connection `free_buffer_minutes < 0` and departure already passed | `disrupted` | `direct` or `downstream` |
+| Incoming connection `free_buffer_minutes < 0` (still upcoming) | `at_risk` | `direct` or `downstream` |
+| Incoming connection free buffer < `TIGHT_CONNECTION_MINUTES` (30) | `at_risk` | `direct` or `downstream` |
+| Transport element without start/end locations (cannot evaluate) | `unknown` | `direct` or `downstream` |
+| Otherwise | `valid` | `unaffected` or `downstream` |
+
+- **Roots** come from the latest feed records first (authoritative). Open events with a `direct` impact marked `disrupted` act as a fallback so manually recorded disruptions stay visible when no feed is reporting.
+- **Downstream closure** follows `outgoing_dependencies` from every root; downstream marks inherit the reason from connection/check-in rules.
+- **Severity**: `critical` (cancellation, check-in miss), `high` (delay, severe traffic, infeasible-but-upcoming connection, missed departure), `medium` (tight connection, weather advisory), `low` (valid, light advisory).
+
+### Written artifacts (idempotent)
+
+- `Event`: one per root/advisory source, deduplicated on `(source, title, status open/new/monitored)`; existing open events are updated, not duplicated. `Event.location` is left `null`.
+- `Case`: one open operational case per trip, reused across passes (`status` in `open`/`new`/`monitored`); title/priority updated to the current worst severity.
+- `Impact` / `CaseImpact`: mirrors every direct/downstream mark that has a feed event (`update_or_create` on `(event, itinerary_element)` / `(case, impact)`).
+- `CaseAction`: vocabulary `change_transportation`, `contact_supplier`, `monitor`, `leave_earlier`, `alternate_route`, `extend_accommodation`; deduplicated per `(case, type)`.
+- `NodeStatus`: one row per element per pass (append-only history).
+
+Re-posting the same feed state is stable: event/case/impact/action counts do not grow, only `NodeStatus` history and the raw feed snapshots do.
+
+### Live status — `GET /api/trips/<pk>/live-status/`
+
+Response shape (`LiveStatusDetailSerializer`):
+
+| Field | Content |
+| --- | --- |
+| `trip_id`, `name`, `phase`, `generated_at` | identity + reference time |
+| `nodes` | one object per element ordered by sequence: `element_id`, `element_name`, `sequence`, `type`, `status`, `classification`, `severity`, `reason`, `calculated_at`, and `history` (latest `history_limit=5` `NodeStatus` rows) |
+| `feeds` | latest flight/train/traffic/weather snapshots grouped per element + `gps` (single latest ping or `null`) |
+| `cases` | open cases with their `nodes` and `actions` (`id`, `type`, `description`, `status`, `completed_at`) |
+| `recommended_actions` | non-completed actions across open cases |
+| `summary` | counts: `disrupted`, `at_risk`, `valid`, `unknown`, `open_cases`, `affected_bookings` |
+
+`404` for an unknown trip.
+
+---
+
+## LLM trip summary — `GET /api/trips/<pk>/summary/`
+
+On-demand, computed by `summarize_trip(trip, now, model)` in `travelops/app/gemini_summary.py`. The deterministic `analyze_trip` output and `live_status_payload` snapshot are rendered as context and sent to Gemini with `response_mime_type="application/json"` and a fixed `TripSummaryResult` schema (mirroring `TripSummaryResponseSerializer`). It never writes to the database and never proposes silent itinerary changes.
+
+Response (200):
+
+```json
+{
+  "model": "gemini-3.5-flash-lite",
+  "result": {
+    "headline": "Delayed flight AI-1049 puts two connections at risk.",
+    "phase": "ACTIVE",
+    "overall_assessment": "READY_WITH_WARNINGS",
+    "summary": "The inbound flight is 2h05m late; the Kovalam transfer and Alleppey cruise need monitoring...",
+    "affected_nodes": [
+      { "element_id": 100, "element_name": "Flight AI-1049 Delhi to Trivandrum", "status": "disrupted", "classification": "direct", "severity": "high", "reason": "..." }
+    ],
+    "recommended_actions": [
+      { "case_id": 100, "type": "monitor", "description": "..." }
+    ],
+    "risks": [
+      { "severity": "high", "description": "..." }
+    ]
+  }
+}
+```
+
+Error mapping mirrors the import endpoints: `GEMINI_API_KEY` not set → `503`; upstream Gemini failure or no structured output → `502`; unknown trip → `404`.
 
 ---
 
@@ -573,10 +802,10 @@ The trip **overview** (summary `readiness` field) deliberately shows the **lates
 
 `travelops/app/fixtures/demo_trips.json` provides demo data:
 
-- **Trip 100 — Kerala Monsoon Escape** (active): flight, road transfers, hotel, activity, train; bookings, dependencies, flight-delay + weather events, impacts, an open case with actions, `ReadinessAssessment` (`attention`), and `TripRisk` records.
+- **Trip 100 — Kerala Monsoon Escape** (active): flight, road transfers, hotel, activity, train; bookings, dependencies, flight-delay + weather events, impacts, an open case with actions, `ReadinessAssessment` (`attention`), `TripRisk` records, live feed snapshots (`FlightStatusRecord` of the delayed AI-1049, a `TrafficRouteRecord`, a `WeatherRecord`, a `GuidePosition`), and `NodeStatus` history rows.
 - **Trip 200 — Himalayan Yatra** (upcoming): flight, transfer, hotel, activity; a pending hotel booking, `ReadinessAssessment` (`incomplete`), and open risks.
 - **Trip 300 — Santorini Sunset** (completed): completed elements with actual times, `ReadinessAssessment` (`ready`).
 
 ## Tests
 
-`travelops/app/tests.py` covers: trip list/create/detail/update/delete, nested create validation (location reuse, invalid location, out-of-range dependencies), disruption detail (impacts + case actions), demo fixture loading, the analysis engine (phase, statuses, completeness, feasibility, deadlines, external, risks, delay handling, metrics), and the `GET /api/trips/<pk>/analysis/` endpoint (structure + 404).
+`travelops/app/tests.py` covers: trip list/create/detail/update/delete, nested create validation (location reuse, invalid location, out-of-range dependencies), disruption detail (impacts + case actions), demo fixture loading, the analysis engine (phase, statuses, completeness, feasibility, deadlines, external, risks, delay handling, metrics), the `GET /api/trips/<pk>/analysis/` endpoint (structure + 404), the live engine (`recompute_live_status` feeds, downstream propagation, dedup/re-posting stability), the ingestion endpoints (flight/train/traffic/weather/GPS shapes, wrong-trip element rejection, 404), the live-status endpoint (structure, node history limit), and the `GET /api/trips/<pk>/summary/` endpoint (schema matching, 503/502 error mapping).

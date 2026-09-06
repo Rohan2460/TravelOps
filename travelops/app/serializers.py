@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group, User
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from .gemini_import import MAX_FILE_BYTES, resolve_mime_type
@@ -17,6 +18,11 @@ from .models import (
     ItineraryChange,
     ReadinessAssessment,
     TripRisk,
+    FlightStatusRecord,
+    TrainStatusRecord,
+    TrafficRouteRecord,
+    WeatherRecord,
+    GuidePosition,
 )
 
 
@@ -592,3 +598,277 @@ class TripCreateSerializer(serializers.ModelSerializer):
                 )
 
         return trip
+
+
+class FlightStatusCreateSerializer(serializers.ModelSerializer):
+    """Ingestion payload for POST /api/trips/<pk>/live/flight-status/."""
+
+    reported_at = serializers.DateTimeField(required=False)
+
+    class Meta:
+        model = FlightStatusRecord
+        fields = [
+            'itinerary_element',
+            'flight_number',
+            'date',
+            'origin_airport',
+            'destination_airport',
+            'scheduled_departure',
+            'estimated_departure',
+            'scheduled_arrival',
+            'estimated_arrival',
+            'status',
+            'gate',
+            'terminal',
+            'delay_minutes',
+            'delay_reason',
+            'reported_at',
+        ]
+
+    def create(self, validated_data):
+        validated_data.setdefault('reported_at', timezone.now())
+        return FlightStatusRecord.objects.create(**validated_data)
+
+
+class TrainStatusCreateSerializer(serializers.ModelSerializer):
+    """Ingestion payload for POST /api/trips/<pk>/live/train-status/."""
+
+    reported_at = serializers.DateTimeField(required=False)
+    speed_kmh = serializers.FloatField(required=False, default=0.0)
+
+    class Meta:
+        model = TrainStatusRecord
+        fields = [
+            'itinerary_element',
+            'train_number',
+            'date',
+            'origin_station',
+            'destination_station',
+            'current_station',
+            'scheduled_time',
+            'estimated_time',
+            'status',
+            'platform',
+            'delay_minutes',
+            'speed_kmh',
+            'reported_at',
+        ]
+
+    def create(self, validated_data):
+        validated_data.setdefault('reported_at', timezone.now())
+        return TrainStatusRecord.objects.create(**validated_data)
+
+
+class TrafficRouteCreateSerializer(serializers.ModelSerializer):
+    """Ingestion payload for POST /api/trips/<pk>/live/traffic/."""
+
+    checked_at = serializers.DateTimeField(required=False)
+    incidents = serializers.JSONField(required=False, default=list)
+
+    class Meta:
+        model = TrafficRouteRecord
+        fields = [
+            'itinerary_element',
+            'origin',
+            'destination',
+            'departure_time',
+            'distance_km',
+            'duration_minutes',
+            'traffic_delay_minutes',
+            'congestion_level',
+            'recommended_route',
+            'incidents',
+            'checked_at',
+        ]
+
+    def create(self, validated_data):
+        validated_data.setdefault('checked_at', timezone.now())
+        return TrafficRouteRecord.objects.create(**validated_data)
+
+
+class WeatherCreateSerializer(serializers.ModelSerializer):
+    """Ingestion payload for POST /api/trips/<pk>/live/weather/."""
+
+    checked_at = serializers.DateTimeField(required=False)
+    warnings = serializers.JSONField(required=False, default=list)
+
+    class Meta:
+        model = WeatherRecord
+        fields = [
+            'itinerary_element',
+            'date_time',
+            'condition',
+            'temperature_c',
+            'temperature_f',
+            'humidity_percent',
+            'wind_speed_kmh',
+            'precipitation_mm',
+            'visibility_km',
+            'warnings',
+            'checked_at',
+        ]
+
+    def create(self, validated_data):
+        validated_data.setdefault('checked_at', timezone.now())
+        return WeatherRecord.objects.create(**validated_data)
+
+
+class GuidePositionCreateSerializer(serializers.ModelSerializer):
+    """Ingestion payload for POST /api/trips/<pk>/live/gps/."""
+
+    captured_at = serializers.DateTimeField(required=False)
+    received_at = serializers.DateTimeField(required=False)
+
+    class Meta:
+        model = GuidePosition
+        fields = [
+            'itinerary_element',
+            'device_id',
+            'latitude',
+            'longitude',
+            'speed_kmh',
+            'heading_deg',
+            'altitude_m',
+            'captured_at',
+            'received_at',
+        ]
+
+    def create(self, validated_data):
+        validated_data.setdefault('received_at', timezone.now())
+        validated_data.setdefault('captured_at', validated_data['received_at'])
+        return GuidePosition.objects.create(**validated_data)
+
+
+class FeedsReceivedSerializer(serializers.Serializer):
+    """The ingested record echoed back on success."""
+
+    element_id = serializers.IntegerField(read_only=True)
+    received = serializers.JSONField(read_only=True)
+    statuses = serializers.ListField(
+        child=serializers.JSONField(),
+        read_only=True,
+    )
+    case_id = serializers.IntegerField(read_only=True, allow_null=True)
+    phase = serializers.CharField(read_only=True)
+    affected_bookings = serializers.ListField(
+        child=serializers.IntegerField(),
+        read_only=True,
+    )
+
+
+class LiveNodeHistorySerializer(serializers.Serializer):
+    status = serializers.CharField(read_only=True)
+    classification = serializers.CharField(read_only=True)
+    severity = serializers.CharField(read_only=True)
+    reason = serializers.CharField(read_only=True)
+    calculated_at = serializers.DateTimeField(read_only=True)
+
+
+class LiveNodeSerializer(serializers.Serializer):
+    element_id = serializers.IntegerField(read_only=True)
+    element_name = serializers.CharField(read_only=True)
+    sequence = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    classification = serializers.CharField(read_only=True)
+    severity = serializers.CharField(read_only=True)
+    reason = serializers.CharField(read_only=True)
+    calculated_at = serializers.DateTimeField(read_only=True)
+    history = LiveNodeHistorySerializer(many=True, read_only=True)
+
+
+class LiveFeedRecordSerializer(serializers.Serializer):
+    element_id = serializers.IntegerField(read_only=True)
+    values = serializers.JSONField(read_only=True)
+
+
+class LiveFeedsSerializer(serializers.Serializer):
+    flight = serializers.ListField(child=serializers.JSONField(), read_only=True)
+    train = serializers.ListField(child=serializers.JSONField(), read_only=True)
+    traffic = serializers.ListField(child=serializers.JSONField(), read_only=True)
+    weather = serializers.ListField(child=serializers.JSONField(), read_only=True)
+    gps = serializers.JSONField(read_only=True, allow_null=True)
+
+
+class LiveActionSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    description = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    completed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+
+
+class LiveCaseSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(read_only=True)
+    priority = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    primary_event_id = serializers.IntegerField(read_only=True, allow_null=True)
+    nodes = LiveNodeSerializer(many=True, read_only=True)
+    actions = LiveActionSerializer(many=True, read_only=True)
+
+
+class LiveRecommendedActionSerializer(serializers.Serializer):
+    case_id = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    description = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+
+
+class LiveStatusSummarySerializer(serializers.Serializer):
+    disrupted = serializers.IntegerField(read_only=True)
+    at_risk = serializers.IntegerField(read_only=True)
+    valid = serializers.IntegerField(read_only=True)
+    unknown = serializers.IntegerField(read_only=True)
+    open_cases = serializers.IntegerField(read_only=True)
+    affected_bookings = serializers.IntegerField(read_only=True)
+
+
+class LiveStatusDetailSerializer(serializers.Serializer):
+    """Read-only view of ``live_status_payload``."""
+
+    trip_id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    phase = serializers.CharField(read_only=True)
+    generated_at = serializers.DateTimeField(read_only=True)
+    nodes = LiveNodeSerializer(many=True, read_only=True)
+    feeds = LiveFeedsSerializer(read_only=True)
+    cases = LiveCaseSerializer(many=True, read_only=True)
+    recommended_actions = LiveRecommendedActionSerializer(
+        many=True, read_only=True
+    )
+    summary = LiveStatusSummarySerializer(read_only=True)
+
+
+class SummaryAffectedNodeSerializer(serializers.Serializer):
+    element_id = serializers.IntegerField(read_only=True)
+    element_name = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    classification = serializers.CharField(read_only=True)
+    severity = serializers.CharField(read_only=True)
+    reason = serializers.CharField(read_only=True)
+
+
+class SummaryRecommendedActionSerializer(serializers.Serializer):
+    case_id = serializers.IntegerField(read_only=True, allow_null=True)
+    type = serializers.CharField(read_only=True)
+    description = serializers.CharField(read_only=True)
+
+
+class SummaryRiskSerializer(serializers.Serializer):
+    severity = serializers.CharField(read_only=True)
+    description = serializers.CharField(read_only=True)
+
+
+class TripSummaryResponseSerializer(serializers.Serializer):
+    """Response shape of the on-demand LLM trip summary."""
+
+    headline = serializers.CharField(read_only=True)
+    phase = serializers.CharField(read_only=True)
+    overall_assessment = serializers.CharField(read_only=True)
+    summary = serializers.CharField(read_only=True)
+    affected_nodes = SummaryAffectedNodeSerializer(many=True, read_only=True)
+    recommended_actions = SummaryRecommendedActionSerializer(
+        many=True, read_only=True
+    )
+    risks = SummaryRiskSerializer(many=True, read_only=True)

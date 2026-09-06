@@ -969,5 +969,169 @@
       "details": {"outcome": "on_time"},
       "created_at": "2026-07-08T00:00:00Z"
     }
+  },
+
+  {
+    "model": "app.flightstatusrecord",
+    "pk": 100,
+    "fields": {
+      "itinerary_element": 100,
+      "flight_number": "AI-1049",
+      "date": "2026-09-04",
+      "origin_airport": "DEL",
+      "destination_airport": "TRV",
+      "scheduled_departure": "2026-09-04T00:30:00Z",
+      "estimated_departure": "2026-09-04T02:35:00Z",
+      "scheduled_arrival": "2026-09-04T04:00:00Z",
+      "estimated_arrival": "2026-09-04T06:05:00Z",
+      "status": "DELAYED",
+      "gate": "B27",
+      "terminal": "3",
+      "delay_minutes": 125,
+      "delay_reason": "Technical snag resolved; departed 2h05m late.",
+      "reported_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.trafficrouterecord",
+    "pk": 100,
+    "fields": {
+      "itinerary_element": 101,
+      "origin": "Trivandrum Intl Airport (TRV)",
+      "destination": "Kovalam Beach Resort",
+      "departure_time": "2026-09-04T05:30:00Z",
+      "distance_km": 18.2,
+      "duration_minutes": 55,
+      "traffic_delay_minutes": 15,
+      "congestion_level": "MODERATE",
+      "recommended_route": "Coastal bypass to avoid city center",
+      "incidents": [
+        {"incident_type": "congestion", "description": "Heavy traffic near Kovalam junction", "delay_contribution_mins": 15}
+      ],
+      "checked_at": "2026-09-04T04:05:00Z"
+    }
+  },
+  {
+    "model": "app.weatherrecord",
+    "pk": 100,
+    "fields": {
+      "itinerary_element": 104,
+      "location": 104,
+      "date_time": "2026-09-04T04:00:00Z",
+      "condition": "Monsoon Showers",
+      "temperature_c": 27.4,
+      "temperature_f": 81.3,
+      "humidity_percent": 88.0,
+      "wind_speed_kmh": 32.5,
+      "precipitation_mm": 24.0,
+      "visibility_km": 4.2,
+      "warnings": [
+        "Monsoon Advisory: Waterlogging expected on low-lying arterial roads."
+      ],
+      "checked_at": "2026-09-04T04:00:00Z"
+    }
+  },
+  {
+    "model": "app.guideposition",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 101,
+      "device_id": "TRV-GD-1",
+      "latitude": 8.4584,
+      "longitude": 76.9478,
+      "speed_kmh": 42.0,
+      "heading_deg": 210.0,
+      "altitude_m": 12.0,
+      "captured_at": "2026-09-04T04:00:00Z",
+      "received_at": "2026-09-04T04:00:05Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 100,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 100,
+      "status": "disrupted",
+      "classification": "direct",
+      "severity": "high",
+      "reason": "Flight AI-1049 detected DELAYED: departed 2h05m late.",
+      "source_event": 100,
+      "case": 100,
+      "calculated_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 101,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 101,
+      "status": "at_risk",
+      "classification": "downstream",
+      "severity": "high",
+      "reason": "Inbound connection to 'Transfer Trivandrum Airport to Kovalam' arrives later than planned; driver holding until arrival.",
+      "source_event": 100,
+      "case": 100,
+      "calculated_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 102,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 102,
+      "status": "valid",
+      "classification": "unaffected",
+      "severity": "low",
+      "reason": "'Kovalam Beach Resort' is not affected by any live disruption.",
+      "case": null,
+      "calculated_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 103,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 103,
+      "status": "valid",
+      "classification": "unaffected",
+      "severity": "low",
+      "reason": "'Transfer Kovalam to Alleppey' is not affected by any live disruption.",
+      "case": null,
+      "calculated_at": "2026-09-04T03:10:00Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 104,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 104,
+      "status": "at_risk",
+      "classification": "direct",
+      "severity": "medium",
+      "reason": "Weather advisory for 'Alleppey Backwater Cruise': Monsoon Advisory: Waterlogging expected on low-lying arterial roads.",
+      "source_event": 101,
+      "case": null,
+      "calculated_at": "2026-09-04T04:00:00Z"
+    }
+  },
+  {
+    "model": "app.nodestatus",
+    "pk": 105,
+    "fields": {
+      "trip": 100,
+      "itinerary_element": 105,
+      "status": "valid",
+      "classification": "unaffected",
+      "severity": "low",
+      "reason": "'Train Alleppey to Trivandrum' is not affected by any live disruption.",
+      "case": null,
+      "calculated_at": "2026-09-04T03:10:00Z"
+    }
   }
 ]

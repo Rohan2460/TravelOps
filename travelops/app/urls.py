@@ -2,10 +2,17 @@ from django.urls import path
 
 from .views import (
     TripAnalysisView,
+    TripFlightStatusIngestView,
+    TripGpsIngestView,
     TripImportConfirmView,
     TripImportExtractView,
     TripListCreateView,
+    TripLiveStatusView,
+    TripSummaryView,
+    TripTrafficIngestView,
+    TripTrainStatusIngestView,
     TripUpdateView,
+    TripWeatherIngestView,
 )
 
 urlpatterns = [
@@ -33,5 +40,40 @@ urlpatterns = [
         'trips/<int:pk>/analysis/',
         TripAnalysisView.as_view(),
         name='trip-analysis'
+    ),
+    path(
+        'trips/<int:pk>/live/flight-status/',
+        TripFlightStatusIngestView.as_view(),
+        name='trip-live-flight-status'
+    ),
+    path(
+        'trips/<int:pk>/live/train-status/',
+        TripTrainStatusIngestView.as_view(),
+        name='trip-live-train-status'
+    ),
+    path(
+        'trips/<int:pk>/live/traffic/',
+        TripTrafficIngestView.as_view(),
+        name='trip-live-traffic'
+    ),
+    path(
+        'trips/<int:pk>/live/weather/',
+        TripWeatherIngestView.as_view(),
+        name='trip-live-weather'
+    ),
+    path(
+        'trips/<int:pk>/live/gps/',
+        TripGpsIngestView.as_view(),
+        name='trip-live-gps'
+    ),
+    path(
+        'trips/<int:pk>/live-status/',
+        TripLiveStatusView.as_view(),
+        name='trip-live-status'
+    ),
+    path(
+        'trips/<int:pk>/summary/',
+        TripSummaryView.as_view(),
+        name='trip-summary'
     ),
 ]
